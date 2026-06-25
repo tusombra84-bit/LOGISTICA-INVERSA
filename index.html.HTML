@@ -1,0 +1,3544 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Escaneos Inv (IL) - Terminal RF Pro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+    
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght=400;600;700;800;900&display=swap');
+        
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --bg: #f8fafc;
+            --header-bg: #1e293b;
+            --card-bg: #ffffff;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --border: #e2e8f0;
+            --radius-lg: 12px;
+            --radius-md: 8px;
+            --route-color: #2196F3;
+            --print-color: #ec4899;
+            --doffa-color: #8b5cf6;
+        }
+
+        [data-theme="dark"] {
+            --bg: #0f172a;
+            --header-bg: #020617;
+            --card-bg: #1e293b;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Inter', sans-serif; background: var(--bg); color: var(--text-main); height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        .header { 
+            background: var(--header-bg); color: white; padding: 10px 14px; 
+            display: flex; flex-direction: column; gap: 6px; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header-top { display: flex; justify-content: space-between; align-items: center; }
+        .header-title { font-size: 15px; font-weight: 800; }
+        
+        .header-actions-wrapper {
+            position: relative;
+            width: 100%;
+            margin-top: 4px;
+            display: flex;
+            justify-content: center;
+        }
+        .btn-header-menu {
+            width: 100%;
+            max-width: 400px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: var(--radius-md);
+            color: white;
+            font-weight: 800;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            transition: background 0.2s;
+        }
+        .btn-header-menu:hover { background: rgba(255, 255, 255, 0.15); }
+        
+        .header-actions { 
+            display: none; 
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 10px; 
+            background: var(--header-bg);
+            padding: 18px;
+            border-radius: var(--radius-lg);
+            position: absolute;
+            top: calc(100% + 8px);
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100vw - 30px);
+            max-width: 900px;
+            z-index: 3000;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.5);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .header-actions.show-menu { display: grid !important; }
+        
+        .btn-header { 
+            padding: 12px 14px; 
+            border-radius: var(--radius-md); 
+            border: none; 
+            font-size: 11px; 
+            font-weight: 800; 
+            cursor: pointer; 
+            text-transform: uppercase; 
+            display: flex; 
+            align-items: center; 
+            justify-content: flex-start; 
+            gap: 8px; 
+            width: 100%; 
+            display: none; 
+            transition: transform 0.2s, filter 0.2s;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .btn-header:hover { transform: translateY(-2px); filter: brightness(1.15); }
+        
+        .btn-view-records { background: var(--primary); color: white; }
+        .btn-upload { background: var(--success); color: white; }
+        .btn-delete-db { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+        .btn-admin-panel { background: var(--warning); color: #451a03; }
+        .btn-search-admin { background: #0ea5e9; color: white; }
+        .btn-db-view { background: #8b5cf6; color: white; }
+        .btn-stats-view { background: #ec4899; color: white; } 
+
+        .db-status { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; justify-content: space-between; background: rgba(0,0,0,0.15); padding: 4px 8px; border-radius: 6px; }
+        .user-badge { display: flex; align-items: center; gap: 4px; }
+        .btn-logout { background: transparent; border: none; color: #fca5a5; font-size: 11px; font-weight: 700; margin-left: 6px; }
+
+        .main-content { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 12px; transition: all 0.3s ease; }
+
+        .scan-box { background: var(--card-bg); padding: 14px; border-radius: var(--radius-lg); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); border: 1px solid var(--border); }
+        .input-group { display: flex; gap: 8px; margin-bottom: 10px; }
+        .main-input { flex: 1; padding: 14px; font-size: 18px; font-weight: 800; text-align: center; border: 3px solid var(--primary); border-radius: var(--radius-md); background: var(--bg); color: var(--text-main); outline: none; font-family: monospace; }
+        .btn-manual { background: var(--success); color: white; border: none; border-radius: var(--radius-md); padding: 0 16px; font-size: 18px; }
+
+        .form-row { display: grid; grid-template-columns: 50px 1fr 1fr 1.2fr; gap: 5px; }
+        .form-row input, .form-row select { width: 100%; padding: 10px 4px; border: 1px solid var(--border); border-radius: var(--radius-md); font-size: 11px; text-align: center; background: var(--bg); color: var(--text-main); font-weight: 700; outline: none; height: 41px; }
+        .form-row select { text-align-last: center; appearance: none; }
+
+        .dashboard-compact { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .stat-card-mini { background: var(--card-bg); padding: 10px; border-radius: var(--radius-md); border: 1px solid var(--border); text-align: center; }
+        .stat-card-mini.full-width { grid-column: span 2; background: linear-gradient(135deg, var(--primary), #312e81); border: none; color: white; }
+        .stat-label-mini { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px; }
+        .stat-card-mini.full-width .stat-label-mini { color: rgba(255,255,255,0.7); }
+        .stat-value-mini { font-size: 16px; font-weight: 800; color: var(--primary); }
+        .stat-card-mini.full-width .stat-value-mini { color: white; font-size: 14px; font-family: monospace; }
+
+        .stat-card-mini.route-accent { border-color: var(--route-color); }
+        .stat-card-mini.route-accent .stat-value-mini { color: var(--route-color); }
+        .stat-card-mini.print-accent { border-color: var(--print-color); }
+        .stat-card-mini.print-accent .stat-value-mini { color: var(--print-color); }
+
+        .route-validation-box { display: none; background: var(--card-bg); padding: 14px; border-radius: var(--radius-lg); border: 2px solid var(--route-color); box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .route-title { font-size: 12px; font-weight: bold; color: var(--route-color); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px;}
+        .resumen-tabla { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 5px; }
+        .resumen-tabla th { background: var(--bg); padding: 6px; font-size: 10px; text-transform: uppercase; opacity: 0.8; text-align: left; border-bottom: 1px solid var(--border); }
+        .resumen-tabla td { padding: 6px; border-bottom: 1px solid var(--border); }
+        .resumen-vacio { text-align: center; font-size: 11px; color: var(--text-muted); padding: 8px 0; font-style: italic; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.7); z-index: 1000; align-items: center; justify-content: center; padding: 10px; backdrop-filter: blur(4px); }
+        .modal-content { background: var(--card-bg); padding: 16px; border-radius: var(--radius-lg); width: 100%; max-height: 90vh; display: flex; flex-direction: column; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); border: 1px solid var(--border); }
+        
+        .table-header { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+        
+        .history-list { display: flex; flex-direction: column; gap: 8px; overflow-y: auto; flex: 1; padding-right: 2px; }
+        .history-card { background: var(--card-bg); border: 1px solid var(--border); border-left: 4px solid var(--primary); padding: 10px; border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 4px; }
+        .history-card.card-forzado { border-left-color: var(--danger); background: #fef2f2; }
+        .history-card.card-sinprog { border-left-color: var(--warning); background: #fffbeb; }
+        .history-card-top { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 800; }
+        .history-card-mid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; font-size: 10px; background: rgba(0,0,0,0.02); padding: 4px; border-radius: 4px; margin: 2px 0; text-align: center; }
+        .history-card-bot { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-muted); align-items: center; }
+
+        .user-stat-card { background: var(--bg); border: 1px solid var(--border); padding: 10px; border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 6px; }
+        .user-stat-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed var(--border); padding-bottom: 4px; }
+        .user-stat-name { font-size: 12px; font-weight: 800; color: var(--primary); text-transform: uppercase; }
+        .user-stat-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; text-align: center; }
+        .user-stat-box { background: var(--card-bg); padding: 6px 4px; border-radius: 4px; border: 1px solid var(--border); }
+        .user-stat-label { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; }
+        .user-stat-val { font-size: 13px; font-weight: 900; }
+
+        .tabs-container { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+        .tab-btn { flex: 1; padding: 10px; border: none; background: transparent; color: var(--text-muted); font-weight: 700; font-size: 12px; text-align: center; }
+        .tab-btn.active { color: var(--primary); border-bottom: 2px solid var(--primary); background: rgba(79, 70, 229, 0.05); }
+
+        .info-preview-box { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; background: var(--bg); padding: 8px; border-radius: var(--radius-md); margin-bottom: 12px; font-size: 12px; }
+        
+        #toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #10b981; color: white; padding: 12px 24px; border-radius: 30px; font-size: 13px; font-weight: 800; z-index: 2000; box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3); display: none; }
+        .theme-toggle { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.15); color: white; padding: 8px; border-radius: var(--radius-md); }
+        .admin-user-item { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px; border-bottom: 1px solid var(--border); background: var(--card-bg); border-radius: var(--radius-md); margin-bottom: 4px; }
+        .btn-del-user { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239,68,68,0.2); padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; cursor: pointer; }
+
+        .btn-msg-reply { width: 100%; padding: 11px; font-size: 13px; font-weight: 800; border: 2px solid var(--primary); background: var(--card-bg); color: var(--primary); border-radius: var(--radius-md); cursor: pointer; text-align: center; transition: all 0.2s; }
+        .btn-msg-reply:hover { background: var(--primary); color: white; }
+        .msg-log-item { background: var(--bg); padding: 8px; border-radius: 6px; border: 1px solid var(--border); font-size: 11px; display: flex; flex-direction: column; gap: 2px; }
+        
+        .perm-grid-box { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; width: 100%; margin-top: 6px; padding: 6px; background: rgba(0,0,0,0.02); border-radius: 6px; }
+        .perm-item-check { display: flex; align-items: center; gap: 4px; font-size: 10px; font-weight: 700; color: var(--text-main); }
+        .perm-item-check input { width: 14px; height: 14px; cursor: pointer; }
+
+        .alert-success { border-top: 8px solid #4CAF50; }
+        .alert-error { border-top: 8px solid #f44336; }
+        .alert-warning { border-top: 8px solid #FF9800; }
+        .alert-body { font-size: 14px; text-align: center; margin-bottom: 12px; line-height: 1.5; }
+        .alert-details { background: var(--bg); padding: 10px; border-radius: 8px; font-size: 12px; text-align: left; margin-top: 8px; border: 1px solid var(--border); }
+        .alert-details div { margin-bottom: 5px; display: flex; justify-content: space-between; }
+
+        .desktop-container {
+            display: none;
+            grid-template-columns: 320px 1fr 360px; 
+            gap: 15px;
+            padding: 15px;
+            height: calc(100vh - 82px); 
+            overflow: hidden;
+        }
+
+        .desktop-panel {
+            background: var(--card-bg);
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            padding: 14px;
+        }
+
+        .desktop-panel-title {
+            font-size: 13px;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+            border-bottom: 2px solid var(--primary);
+            color: var(--primary);
+        }
+
+        .desktop-panel-body {
+            flex: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        body.mode-desktop-active .main-content { display: none !important; }
+        body.mode-desktop-active .desktop-container { display: grid !important; }
+        
+        .desktop-switch-container {
+            display: none; 
+            align-items: center;
+            gap: 6px;
+            background: rgba(255, 255, 255, 0.15);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 800;
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        .desktop-switch-container input { cursor: pointer; width: 14px; height: 14px; }
+
+        .btn-flotante-consola {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 50px;
+            padding: 12px 24px;
+            font-size: 12px;
+            font-weight: 900;
+            box-shadow: 0 4px 15px rgba(79, 70, 229, 0.4);
+            cursor: grab;
+            z-index: 9000;
+            align-items: center;
+            gap: 8px;
+            transition: background 0.2s;
+            user-select: none;
+        }
+        .btn-flotante-consola:active { cursor: grabbing; }
+        .btn-flotante-consola:hover { background: var(--primary-hover); }
+        body.mode-desktop-active .btn-flotante-consola { display: flex; }
+
+        .panel-consola-flotante {
+            position: fixed;
+            bottom: 70px;
+            left: 20px;
+            width: 320px;
+            background: var(--card-bg);
+            border: 2px solid var(--primary);
+            border-radius: var(--radius-lg);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            z-index: 9000;
+            transform: translateY(150%);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            flex-direction: column;
+            padding: 14px;
+            pointer-events: none;
+        }
+        .panel-consola-flotante.active {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .dia-header-auditoria {
+            background: var(--primary);
+            color: white;
+            font-weight: 800;
+        }
+        .ruta-item-auditoria {
+            border: 1px solid var(--border);
+            background: var(--card-bg);
+            border-radius: 6px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="toast">ÉXITO ✓</div>
+
+<button id="btnFlotanteConsola" class="btn-flotante-consola">🕹️ ABRIR CONSOLA PC</button>
+
+<div id="consolaFlotanteDesk" class="panel-consola-flotante">
+    <div class="desktop-panel-title" style="display:flex; justify-content:space-between; align-items:center; border-bottom: 2px solid var(--primary); padding-bottom:8px; margin-bottom:10px;">
+        <span style="color:var(--primary);">🕹️ CONSOLA DE CONTROL</span>
+        <button onclick="toggleConsolaFlotante()" style="background:none; border:none; font-size:18px; font-weight:bold; color:var(--text-muted); cursor:pointer;">&times;</button>
+    </div>
+    <div style="overflow-y:auto; flex:1; max-height: calc(100vh - 150px);">
+        <div class="scan-box" style="box-shadow:none; border-color:var(--border);">
+            <div class="input-group">
+                <input type="text" id="inpScanDesk" class="main-input" placeholder="ESCANEÉ AQUÍ (PC)..." autocomplete="off" onkeypress="if(event.key === 'Enter') procesarEscaneoDesk()">
+                <button class="btn-manual" onclick="procesarEscaneoDesk()">✓</button>
+            </div>
+            <div class="form-row" style="margin-bottom:10px;">
+                <input type="number" id="inpBultosDesk" value="1" title="Bultos" oninput="sincronizarControlesEspejo('bul', this.value)">
+                <input type="text" id="inpUbicDesk" placeholder="Ubicación" oninput="sincronizarControlesEspejo('ubic', this.value)">
+                <input type="text" id="inpZonaDesk" placeholder="Zona" oninput="sincronizarControlesEspejo('zona', this.value)">
+                <select id="inpCatDesk" onchange="sincronizarControlesEspejo('cat', this.value); comprobarOpcionOtro(this);">
+                    <option value="-">OPCIÓN</option>
+                    <option value="BIG TICKET">BIG TICKET</option>
+                    <option value="MINI">MINI</option>
+                    <option value="INVENTARIADO">INVENTARIADO</option>
+                    <option value="MULTIFOLIO">MULTIFOLIO</option>
+                    <option value="REZAGOS">REZAGOS</option>
+                    <option value="EXTRAIDO">EXTRAIDO</option>
+                    <option value="RUTEO IL">RUTEO IL</option>
+                    <option value="RUTEO IL (MULTIFOLIOS)">RUTEO IL (MULTIFOLIOS)</option>
+                    <option value="OTRO">OTRO...</option>
+                </select>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:4px;">
+                <label style="font-size:11px; font-weight:800; color:#dc2626; display:flex; align-items:center; gap:6px; cursor:pointer; background:rgba(239,68,68,0.05); padding:6px; border-radius:4px; border:1px dashed #ef4444;">
+                    <input type="checkbox" id="chkModoForzarDesk" onchange="document.getElementById('chkModoForzar').checked = this.checked; toggleModoForzar();">
+                    <span>🔓 FORZAR REGISTRO</span>
+                </label>
+                <label style="font-size:11px; font-weight:800; color:var(--route-color); display:flex; align-items:center; gap:6px; cursor:pointer; background:rgba(33,150,243,0.05); padding:6px; border-radius:4px; border:1px dashed var(--route-color);">
+                    <input type="checkbox" id="chkModoValidarRutaDesk" onchange="document.getElementById('chkModoValidarRuta').checked = this.checked; toggleModoValidarRuta();">
+                    <span>🚚 VALIDAR RUTA IL</span>
+                </label>
+                <label style="font-size:11px; font-weight:800; color:var(--print-color); display:flex; align-items:center; gap:6px; cursor:pointer; background:rgba(236,72,153,0.05); padding:6px; border-radius:4px; border:1px dashed var(--print-color);">
+                    <input type="checkbox" id="chkModoImprimirDesk" onchange="document.getElementById('chkModoImprimir').checked = this.checked; toggleModoImprimirLocal();">
+                    <span>🖨️ ACTIVAR IMPRESIÓN DE ETIQUETAS</span>
+                </label>
+                <label style="font-size:11px; font-weight:800; color:var(--doffa-color); display:flex; align-items:center; gap:6px; cursor:pointer; background:rgba(139, 92, 246, 0.05); padding:6px; border-radius:4px; border:1px dashed var(--doffa-color);">
+                    <input type="checkbox" id="chkModoDoffaDesk" onchange="document.getElementById('chkModoDoffa').checked = this.checked; toggleModoDoffa();">
+                    <span>📦 ACTIVAR MODO DOFFA</span>
+                </label>
+            </div>
+        </div>
+        
+        <div class="dashboard-compact" style="margin-top:5px;">
+            <div class="stat-card-mini"><div class="stat-label-mini">Día</div><div id="dispDiaDesk" class="stat-value-mini">-</div></div>
+            <div class="stat-card-mini"><div class="stat-label-mini">Secuencia</div><div id="dispSecDesk" class="stat-value-mini">-</div></div>
+            <div class="stat-card-mini" style="grid-column: span 2;"><div class="stat-label-mini">Ruta Asignada</div><div id="dispRutaDesk" class="stat-value-mini">-</div></div>
+            <div class="stat-card-mini full-width"><div class="stat-label-mini">Último Folio</div><div id="dispLastDesk" class="stat-value-mini" style="font-size:13px; color:#fff;">---</div></div>
+        </div>
+    </div>
+</div>
+
+<div id="modalMensajeOperario" class="modal" style="z-index: 5000; background: rgba(15, 23, 42, 0.9);">
+    <div class="modal-content" style="max-width: 360px; text-align: center; border: 3px solid var(--warning);">
+        <div style="font-size: 30px; margin-bottom: 4px;">📢</div>
+        <h3 style="font-weight: 900; color: var(--warning); margin-bottom: 2px; text-transform: uppercase;">MENSAJE DE CONTROL</h3>
+        <p style="font-size: 10px; color: var(--text-muted); margin-bottom: 12px;">Debes responder para continuar operando</p>
+        
+        <div style="background: var(--bg); padding: 14px; border-radius: var(--radius-md); border: 1px dashed var(--border); font-size: 14px; font-weight: 700; color: var(--text-main); margin-bottom: 16px; word-break: break-word;" id="txtMensajeRecibido">
+            --
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button class="btn-msg-reply" onclick="responderMensajeControl('De acuerdo')">De acuerdo</button>
+            <button class="btn-msg-reply" onclick="responderMensajeControl('Lo tendré en cuenta')">Lo tendré en cuenta</button>
+            <button class="btn-msg-reply" onclick="responderMensajeControl('Está bien ,lo recordaré')">Está bien ,lo recordaré</button>
+            <button class="btn-msg-reply" onclick="responderMensajeControl('Okey')">Okey</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalGatekeeper" class="modal" style="display: flex;">
+    <div class="modal-content" style="max-width: 360px; text-align: center; padding: 20px;">
+        <h3 style="font-weight: 900; color: var(--primary); margin-bottom: 12px;">ACCESO OPERATIVO</h3>
+        <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px;">
+            <input type="text" id="gateUsername" placeholder="Usuario o ID Operario" style="width:100%; padding:12px; font-size:14px; text-align:center; font-weight:700; border:2px solid var(--border); border-radius:var(--radius-md); outline:none;">
+            <input type="password" id="gatePassword" placeholder="Contraseña Admin" style="width:100%; padding:12px; font-size:14px; text-align:center; font-weight:700; border:2px solid var(--border); border-radius:var(--radius-md); display: none; outline:none;">
+        </div>
+        <button onclick="intentarIngresarSistema()" style="width:100%; background:var(--primary); color:white; border:none; padding:12px; border-radius:var(--radius-md); font-weight:800; cursor:pointer;">INGRESAR</button>
+    </div>
+</div>
+
+<div class="header">
+    <div class="header-top">
+        <div class="header-title">📦 INV IL <span id="tTotal" style="background: var(--primary); padding: 1px 6px; border-radius: 10px; font-size: 11px;">0</span></div>
+        
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <div class="desktop-switch-container" id="panelDesktopSwitch">
+                <input type="checkbox" id="chkModoEscritorio" onchange="toggleModoEscritorioMaster()">
+                <label for="chkModoEscritorio">🖥️ MODO PC</label>
+            </div>
+            <button class="theme-toggle" onclick="toggleTheme()">🌙</button>
+        </div>
+    </div>
+    
+    <div class="db-status">
+        <div style="display:flex; align-items:center; gap:4px;">
+            <span id="dbDot" style="width:8px; height:8px; border-radius:50%; background:var(--danger);"></span>
+            <span id="dbText" style="color:#94a3b8; font-size:10px;">CONECTANDO...</span>
+        </div>
+        <div class="user-badge">
+            <span id="displayUser" style="color:#f1f5f9; font-size:10px; font-weight:700;">@?</span>
+            <button class="btn-logout" onclick="cerrarSesion()">❌</button>
+        </div>
+    </div>
+
+    <div class="header-actions-wrapper" id="wrapperMenuAcciones">
+        <button class="btn-header-menu" onclick="toggleHeaderMenu(event)">🛠️ MENÚ DE HERRAMIENTAS ▼</button>
+        <div class="header-actions" id="menuAccionesGlobales">
+            <button class="btn-header btn-view-records" id="btnHistorial" onclick="abrirModalRegistros(); toggleHeaderMenu();">📋 Historial de Escaneos</button>
+            <button class="btn-header btn-stats-view" id="btnVerAvanceAdmin" onclick="abrirModalAvanceAdmin(); toggleHeaderMenu();">📈 Dashboard y Ranking</button> 
+            <button class="btn-header btn-db-view" id="btnVerBaseAdmin" onclick="abrirModalBaseAdmin(); toggleHeaderMenu();">📊 Ver Base General</button>
+            <button class="btn-header btn-search-admin" id="btnConsultarAdmin" onclick="abrirModalConsulta(); toggleHeaderMenu();">🔍 Consultar Registros</button>
+            <button class="btn-header btn-admin-panel" id="btnAdminPanel" onclick="abrirModalAdmin(); toggleHeaderMenu();">⚙️ Panel de Control</button>
+            <button class="btn-header btn-upload" id="btnCargarBase" onclick="document.getElementById('excelFile').click(); toggleHeaderMenu();">+ Cargar Base RF</button>
+            <button class="btn-header" id="btnBaseRutaLocal" style="background: #0284c7; color:white; display:none;" onclick="document.getElementById('excelRutaLocalFile').click(); toggleHeaderMenu();">📂 +Cargar Base Ruta</button>
+            <button class="btn-header btn-delete-db" id="btnBorrarBase" onclick="borrarBase(); toggleHeaderMenu();">🗑️ Borrar Base Central</button>
+            
+            <input type="file" id="excelFile" accept=".xlsx,.xls" style="display:none">
+            <input type="file" id="excelRutaLocalFile" accept=".xlsx,.xls" style="display:none" onchange="cargarExcelRutaNube(event)">
+        </div>
+    </div>
+</div>
+
+<div class="main-content">
+    
+    <div class="dashboard-compact">
+        <div class="stat-card-mini"><div class="stat-label-mini">Día</div><div id="dispDia" class="stat-value-mini">-</div></div>
+        <div class="stat-card-mini"><div class="stat-label-mini">Secuencia</div><div id="dispSec" class="stat-value-mini">-</div></div>
+        <div class="stat-card-mini" style="grid-column: span 2;"><div class="stat-label-mini">Ruta Asignada</div><div id="dispRuta" class="stat-value-mini" style="font-size:14px;">-</div></div>
+        
+        <div class="stat-card-mini route-accent mod-ruta-item" style="display: none;"><div class="stat-label-mini">En Ruta (Base)</div><div id="cantSubida" class="stat-value-mini">0</div></div>
+        <div class="stat-card-mini route-accent mod-ruta-item" style="display: none;"><div class="stat-label-mini">Faltantes</div><div id="cantFaltante" class="stat-value-mini" style="color:var(--danger)">0</div></div>
+        
+        <div class="stat-card-mini print-accent mod-print-item" style="display: none; grid-column: span 2;"><div class="stat-label-mini">✨ ETIQUETAS EMITIDAS (SESIÓN)</div><div id="cantEtiquetasOperario" class="stat-value-mini" style="color:var(--print-color)">0</div></div>
+
+        <div class="stat-card-mini" style="grid-column: span 2;"><div class="stat-label-mini">Último Escaneo</div><div id="dispLast" class="stat-value-mini">---</div></div>
+    </div>
+
+    <div class="scan-box">
+        <div class="input-group">
+            <input type="text" id="inpScan" class="main-input" placeholder="ESCANEÉ AQUÍ..." autofocus autocomplete="off">
+            <button class="btn-manual" onclick="procesarEscaneo()">✓</button>
+        </div>
+        <div class="form-row">
+            <input type="number" id="inpBultos" value="1" title="Bultos">
+            <input type="text" id="inpUbic" placeholder="Ubicación">
+            <input type="text" id="inpZona" placeholder="Zona">
+            <select id="inpCat" onchange="comprobarOpcionOtro(this)">
+                <option value="-">OPCIÓN</option>
+                <option value="BIG TICKET">BIG TICKET</option>
+                <option value="MINI">MINI</option>
+                <option value="INVENTARIADO">INVENTARIADO</option>
+                <option value="MULTIFOLIO">MULTIFOLIO</option>
+                <option value="REZAGOS">REZAGOS</option>
+                <option value="EXTRAIDO">EXTRAIDO</option>
+                <option value="RUTEO IL">RUTEO IL</option>
+                <option value="RUTEO IL (MULTIFOLIOS)">RUTEO IL (MULTIFOLIOS)</option>
+                <option value="OTRO">OTRO...</option>
+            </select>
+        </div>
+        
+        <div style="margin-top:10px; display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+            <div style="padding:6px; background:rgba(239,68,68,0.05); border:1px dashed #ef4444; border-radius:6px; flex: 1; min-width: 80px; display: flex; align-items: center; justify-content: center;">
+                <label style="font-size:10px; font-weight:800; color:#dc2626; display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="checkbox" id="chkModoForzar" onchange="toggleModoForzar()" style="width:14px; height:14px;">
+                    <span>🔓 FORZAR</span>
+                </label>
+            </div>
+            
+            <div style="padding:6px; background:rgba(33,150,243,0.05); border:1px dashed var(--route-color); border-radius:6px; flex: 1; min-width: 80px; display: flex; align-items: center; justify-content: center;">
+                <label style="font-size:10px; font-weight:800; color:var(--route-color); display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="checkbox" id="chkModoValidarRuta" onchange="toggleModoValidarRuta()" style="width:14px; height:14px;">
+                    <span>🚚 RUTA</span>
+                </label>
+            </div>
+
+            <div style="padding:6px; background:rgba(236,72,153,0.05); border:1px dashed var(--print-color); border-radius:6px; flex: 1; min-width: 80px; display: flex; align-items: center; justify-content: center;">
+                <label style="font-size:10px; font-weight:800; color:var(--print-color); display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="checkbox" id="chkModoImprimir" onchange="toggleModoImprimirLocal()" style="width:14px; height:14px;">
+                    <span>🖨️ IMP.</span>
+                </label>
+            </div>
+
+            <div style="padding:6px; background:rgba(139, 92, 246, 0.05); border:1px dashed var(--doffa-color); border-radius:6px; flex: 1; min-width: 80px; display: flex; align-items: center; justify-content: center;">
+                <label style="font-size:10px; font-weight:800; color:var(--doffa-color); display:flex; align-items:center; gap:4px; cursor:pointer;">
+                    <input type="checkbox" id="chkModoDoffa" onchange="toggleModoDoffa()" style="width:14px; height:14px;">
+                    <span>📦 DOFFA</span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+    <div class="route-validation-box" id="bloqueValidarRutaLocal">
+        <div class="route-title">📍 RESUMEN POR UBICACIÓN (SINCRO GENERAL)</div>
+        <div id="resumenUbicaciones">
+            <div class="resumen-vacio">Escribe una ruta programada arriba para calcular.</div>
+        </div>
+        <div style="font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 8px; font-style: italic;" id="statsTotalRutaLocal">
+            Base de datos en la nube: 0 registros totales
+        </div>
+        
+        <button id="btnVerAuditoriaLocal" class="btn-msg-reply" style="margin-top: 10px; border-color: var(--route-color); color: var(--route-color); display: none;" onclick="abrirModalAuditoria()">🔍 VER AUDITORÍA GLOBAL</button>
+    </div>
+</div>
+
+<div class="desktop-container" id="panelModoEscritorioMaestro">
+    
+    <div class="desktop-panel">
+        <div class="desktop-panel-title" style="display:flex; justify-content:space-between; align-items:center;">
+            <span>📋 Flujo General Servidor</span>
+            <button class="btn-header" style="background:var(--success); color:white; display:inline-block; padding:4px 8px; font-size:10px; width:auto; justify-content:center;" onclick="exportar()">Descargar</button>
+        </div>
+        
+        <div id="adminPrintDashWrapper" style="display:none; margin-bottom: 10px; background: rgba(236,72,153,0.05); border: 1px dashed var(--print-color); padding: 10px; border-radius: 8px;">
+            <h4 style="color: var(--print-color); font-size: 11px; margin-bottom: 8px; font-weight: 900;">📊 MONITOREO DE IMPRESIÓN (ADMIN)</h4>
+            <div id="adminPrintDashContent"></div>
+        </div>
+
+        <div class="desktop-panel-body" id="contenedorTarjetasDesk">
+        </div>
+    </div>
+
+    <div class="desktop-panel" style="border-top: 4px solid #8b5cf6;">
+        <div class="desktop-panel-title" style="color: #8b5cf6; display: flex; justify-content: space-between;">
+            <span>📊 RENDIMIENTO GENERAL (KPIs)</span>
+        </div>
+        <div class="desktop-panel-body" style="gap: 15px; padding-top: 5px; overflow-y: auto; display: flex; flex-direction: column;">
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); padding: 10px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 10px; font-weight: 800; color: var(--success); text-transform: uppercase;">📦 Total Bultos</div>
+                    <div id="kpiTotalBultos" style="font-size: 28px; font-weight: 900; color: var(--text-main);">0</div>
+                </div>
+                <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.2); padding: 10px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 10px; font-weight: 800; color: var(--doffa-color); text-transform: uppercase;">🏆 Top Operario</div>
+                    <div id="kpiTopOperario" style="font-size: 18px; font-weight: 900; color: var(--text-main); margin-top: 4px; word-break: break-all;">-</div>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px; flex: 1;">
+                <div style="background: var(--bg); padding: 10px; border-radius: 8px; border: 1px solid var(--border); display:flex; flex-direction:column; align-items:center; flex: 1;">
+                    <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); margin-bottom: 5px; width: 100%; text-align: left;">CALIDAD DE ESCANEO</div>
+                    <div style="position: relative; height: 160px; width: 100%; flex: 1;">
+                        <canvas id="donutChartCalidad"></canvas>
+                    </div>
+                </div>
+
+                <div style="background: var(--bg); padding: 10px; border-radius: 8px; border: 1px solid var(--border); display:flex; flex-direction:column; align-items:center; flex: 2; min-height: 180px;">
+                    <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); margin-bottom: 5px; width: 100%; text-align: left;">RENDIMIENTO POR HORA</div>
+                    <div style="position: relative; height: 100%; width: 100%; min-height: 160px;">
+                        <canvas id="barChartRendimiento"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="desktop-panel">
+        <div class="desktop-panel-title">📈 Monitoreo de Operarios</div>
+        <div class="desktop-panel-body" style="gap:14px;">
+            <div style="flex:1; display:flex; flex-direction:column; overflow:hidden;">
+                <div style="font-size:11px; font-weight:800; color:var(--text-muted); margin-bottom:5px; text-transform:uppercase;">Avance Personalizado:</div>
+                <div class="history-list" id="contenedorListaAvanceDesk" style="flex:1;"></div>
+            </div>
+            <div id="bloqueRutaDeskBox" style="display:none; flex:1; flex-direction:column; overflow:hidden; border-top:2px dashed var(--route-color); padding-top:10px;">
+                <div class="route-title" style="margin-bottom:4px;">📍 Resumen Ubicación Actual</div>
+                <div class="history-list" id="resumenUbicacionesDesk"></div>
+                
+                <button id="btnVerAuditoriaDesk" class="btn-msg-reply" style="margin-top: 10px; border-color: var(--route-color); color: var(--route-color); display: none;" onclick="abrirModalAuditoria()">🔍 VER AUDITORÍA GLOBAL A PANTALLA COMPLETA</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="modalAuditoriaRutas" class="modal" style="z-index: 7000;">
+    <div class="modal-content" style="max-width: 800px; height: 90vh;">
+        <div class="table-header">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h4 style="font-weight:900; color:var(--route-color); font-size:16px;">🔍 AUDITORÍA GLOBAL DE RUTAS</h4>
+                <div style="display:flex; gap: 8px;">
+                    <button onclick="imprimirReporteValidacion(true)" style="background:var(--route-color); color:white; border:none; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:800; cursor:pointer;">🖨️ REPORTE DETALLADO</button>
+                    <button onclick="imprimirReporteValidacion(false)" style="background:#0ea5e9; color:white; border:none; padding:6px 12px; border-radius:6px; font-size:12px; font-weight:800; cursor:pointer;">🖨️ REPORTE RESUMIDO</button>
+                    <button onclick="cerrarModalAuditoria()" style="background:var(--bg); border:1px solid var(--border); padding:6px 12px; border-radius:6px; font-size:14px; font-weight:800; cursor:pointer;">CERRAR</button>
+                </div>
+            </div>
+            <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">
+                Cruce en tiempo real entre la Base de Datos y los escaneos validados.
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-top: 10px;">
+                <input type="text" id="filtroAuditDia" placeholder="Filtrar Día..." style="padding:10px; border-radius:6px; border:1px solid var(--border); font-size:12px; background:var(--bg); color:var(--text-main); font-weight:700; text-transform:uppercase; outline:none;" oninput="calcularResumenGlobalRutas()">
+                <input type="text" id="filtroAuditRuta" placeholder="Filtrar Ruta..." style="padding:10px; border-radius:6px; border:1px solid var(--border); font-size:12px; background:var(--bg); color:var(--text-main); font-weight:700; text-transform:uppercase; outline:none;" oninput="calcularResumenGlobalRutas()">
+                <input type="text" id="filtroAuditSec" placeholder="Filtrar Sec..." style="padding:10px; border-radius:6px; border:1px solid var(--border); font-size:12px; background:var(--bg); color:var(--text-main); font-weight:700; text-transform:uppercase; outline:none;" oninput="calcularResumenGlobalRutas()">
+            </div>
+        </div>
+        <div class="history-list" id="contenedorAuditoriaModal" style="padding: 10px;"></div>
+    </div>
+</div>
+
+<div id="modalAvanceAdmin" class="modal" style="z-index: 7000;">
+    <div class="modal-content" style="max-width: 900px; width: 95%; height: 90vh;">
+        <div class="table-header">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h4 style="font-weight:900; color:#ec4899;">📊 DASHBOARD GLOBAL Y RANKING</h4>
+                <button onclick="cerrarModalAvanceAdmin()" style="background:var(--bg); border:1px solid var(--border); padding:4px 10px; border-radius:4px; font-size:12px; font-weight:700;">&times;</button>
+            </div>
+        </div>
+
+        <div style="overflow-y: auto; padding-right: 5px; display: flex; flex-direction: column; gap: 15px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px;">
+                <div style="background: rgba(236,72,153,0.1); border: 1px solid var(--print-color); padding: 10px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 10px; font-weight: 800; color: var(--print-color);">🖨️ IMPRESIÓN</div>
+                    <div id="dashModoImp" style="font-size: 20px; font-weight: 900;">0</div>
+                </div>
+                <div style="background: rgba(33,150,243,0.1); border: 1px solid var(--route-color); padding: 10px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 10px; font-weight: 800; color: var(--route-color);">🚚 MODO RUTA</div>
+                    <div id="dashModoRuta" style="font-size: 20px; font-weight: 900;">0</div>
+                </div>
+                <div style="background: rgba(139,92,246,0.1); border: 1px solid var(--doffa-color); padding: 10px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 10px; font-weight: 800; color: var(--doffa-color);">📦 MODO DOFFA</div>
+                    <div id="dashModoDoffa" style="font-size: 20px; font-weight: 900;">0</div>
+                </div>
+                <div style="background: rgba(16,185,129,0.1); border: 1px solid var(--success); padding: 10px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 10px; font-weight: 800; color: var(--success);">✅ PRINCIPAL</div>
+                    <div id="dashModoPrin" style="font-size: 20px; font-weight: 900;">0</div>
+                </div>
+                <div style="background: rgba(239,68,68,0.1); border: 1px solid var(--danger); padding: 10px; border-radius: 8px; text-align: center;">
+                    <div style="font-size: 10px; font-weight: 800; color: var(--danger);">⚠️ FORZADOS/S.P.</div>
+                    <div id="dashModoForz" style="font-size: 20px; font-weight: 900;">0</div>
+                </div>
+            </div>
+
+            <div style="background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; height: 250px; position: relative;">
+                <canvas id="rankingChart"></canvas>
+            </div>
+
+            <div style="font-size:11px; font-weight:800; color:var(--text-muted); text-transform:uppercase; margin-top: 5px;">Desglose por Operario:</div>
+            <div class="history-list" id="contenedorListaAvance" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; overflow: visible;"></div>
+        </div>
+    </div>
+</div>
+
+<div id="modalBaseAdmin" class="modal">
+    <div class="modal-content">
+        <div class="table-header">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h4 style="font-weight:900; color:#8b5cf6;">📊 MANTENIMIENTO DE BASE (ADMIN)</h4>
+                <button onclick="cerrarModalBaseAdmin()" style="background:var(--bg); border:1px solid var(--border); padding:4px 10px; border-radius:4px; font-size:12px; font-weight:700;">&times;</button>
+            </div>
+            
+            <div style="background: var(--bg); padding: 8px; border: 1px solid var(--border); border-radius: var(--radius-md); margin-top: 4px;">
+                <div style="font-size: 11px; font-weight: 800; color: var(--text-muted); margin-bottom: 4px; text-transform: uppercase;">Añadir Registro Manual a la Base</div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 4px; margin-bottom: 4px;">
+                    <input type="text" id="baseInpGuia" placeholder="Tracking / Guía" style="padding:6px; font-size:11px; border:1px solid var(--border); border-radius:4px; font-weight:700; text-transform:uppercase;">
+                    <input type="text" id="baseInpRuta" placeholder="Ruta (ej: RUTA 10)" style="padding:6px; font-size:11px; border:1px solid var(--border); border-radius:4px; font-weight:700; text-transform:uppercase;">
+                </div>
+                <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px;">
+                    <input type="text" id="baseInpDia" placeholder="Día" style="padding:6px; font-size:11px; border:1px solid var(--border); border-radius:4px; font-weight:700; text-transform:uppercase;">
+                    <input type="text" id="baseInpSec" placeholder="Secuencia" style="padding:6px; font-size:11px; border:1px solid var(--border); border-radius:4px; font-weight:700; text-transform:uppercase;">
+                    <button onclick="agregarRegistroBaseManual()" style="background: #8b5cf6; color: white; border: none; font-size: 11px; font-weight: 800; border-radius: 4px; cursor: pointer;">+ INSERTAR</button>
+                </div>
+            </div>
+
+            <div style="margin-top: 4px;">
+                <input type="text" id="inpBusquedaBase" oninput="filtrarBaseAdmin()" placeholder="Buscar Guía o Ruta en la base..." style="width:100%; padding:10px; font-size:13px; font-weight:700; border:2px solid #8b5cf6; border-radius:var(--radius-md); text-transform:uppercase; text-align:center; outline:none; background:var(--bg); color:var(--text-main);">
+            </div>
+        </div>
+        
+        <div class="history-list" id="contenedorListaBase"></div>
+    </div>
+</div>
+
+<div id="modalConsultaAdmin" class="modal">
+    <div class="modal-content">
+        <div class="table-header">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h4 style="font-weight:900; color:#0ea5e9;">🔍 PANEL DE CONSULTA (ADMIN)</h4>
+                <button onclick="cerrarModalConsulta()" style="background:var(--bg); border:1px solid var(--border); padding:4px 10px; border-radius:4px; font-size:12px; font-weight:700;">&times;</button>
+            </div>
+            <div style="margin-top: 6px;">
+                <input type="text" id="inpBusquedaAdmin" oninput="ejecutarFiltroAdmin()" placeholder="Escribe Guía, Ubicación o @Operario..." style="width:100%; padding:12px; font-size:14px; font-weight:700; border:2px solid #0ea5e9; border-radius:var(--radius-md); text-transform:uppercase; text-align:center; outline:none; background:var(--bg); color:var(--text-main);">
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 6px;">
+                <div style="background:rgba(14,165,233,0.1); border:1px solid rgba(14,165,233,0.2); padding:8px; border-radius:6px; text-align:center;">
+                    <div style="font-size:9px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Total Guías</div>
+                    <div id="lblQueryGuias" style="font-size:18px; font-weight:900; color:#0ea5e9;">0</div>
+                </div>
+                <div style="background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.2); padding:8px; border-radius:6px; text-align:center;">
+                    <div style="font-size:9px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">Total Bultos</div>
+                    <div id="lblQueryBultos" style="font-size:18px; font-weight:900; color:#10b981;">0</div>
+                </div>
+            </div>
+
+            <button id="btnEliminarTodoFiltrado" onclick="eliminarTodoFiltrado()" style="display:none; width:100%; margin-top:6px; background:rgba(239, 68, 68, 0.15); border:1px solid var(--danger); color:var(--danger); padding:8px; border-radius:6px; font-size:11px; font-weight:800; cursor:pointer;">⚠️ ELIMINAR TODO LO FILTRADO</button>
+        </div>
+        
+        <div class="history-list" id="contenedorResultadosConsulta"></div>
+    </div>
+</div>
+
+<div id="modalRegistros" class="modal">
+    <div class="modal-content">
+        <div class="table-header">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h4 style="font-weight:900;">HISTORIAL DE ESCANEOS</h4>
+                <button onclick="cerrarModalRegistros()" style="background:var(--bg); border:1px solid var(--border); padding:4px 10px; border-radius:4px; font-size:12px; font-weight:700;">&times;</button>
+            </div>
+            <div style="display: flex; gap: 6px; margin-top:4px;">
+                <button class="btn-header" style="background:var(--success); color:white; flex:1; justify-content:center; display:inline-block;" onclick="exportar()">📥 Descargar Excel</button>
+                <button class="btn-header" id="btnLimpiarHistorial" style="background:rgba(239,68,68,0.1); color:var(--danger); display: inline-block;" onclick="limpiarScans()">Limpiar Todo</button>
+            </div>
+        </div>
+        <div class="history-list" id="contenedorTarjetas"></div>
+    </div>
+</div>
+
+<div id="modalDup" class="modal">
+    <div class="modal-content" style="max-width: 360px;">
+        <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+            <span style="font-size: 24px;">⚠️</span>
+            <div>
+                <h4 style="color:var(--danger); font-weight:900;">GUÍA YA REGISTRADA</h4>
+                <p id="modalMsg" style="font-size: 11px; color: var(--text-muted);"></p>
+            </div>
+        </div>
+
+        <div class="info-preview-box">
+            <div><b>Día:</b><br><span id="lblDupDia">-</span></div>
+            <div><b>Sec:</b><br><span id="lblDupSec">-</span></div>
+            <div><b>Ruta:</b><br><span id="lblDupRuta">-</span></div>
+        </div>
+        
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px;">
+            <div style="display: grid; grid-template-columns: 80px 1fr; gap: 6px; align-items: center;">
+                <label style="font-size:11px; font-weight:700;">Bultos:</label>
+                <input type="number" id="modBultos" style="padding:8px; font-weight:700; border-radius:6px; border:1px solid var(--border); text-align:center; background:var(--bg); color:var(--text-main);">
+            </div>
+            <div style="display: grid; grid-template-columns: 80px 1fr; gap: 6px; align-items: center;">
+                <label style="font-size:11px; font-weight:700;">Ubicación:</label>
+                <input type="text" id="modUbic" style="padding:8px; font-weight:700; border-radius:6px; border:1px solid var(--border); text-align:center; text-transform:uppercase; background:var(--bg); color:var(--text-main);">
+            </div>
+            <div style="display: grid; grid-template-columns: 80px 1fr; gap: 6px; align-items: center;">
+                <label style="font-size:11px; font-weight:700;">Zona:</label>
+                <input type="text" id="modZona" style="padding:8px; font-weight:700; border-radius:6px; border:1px solid var(--border); text-align:center; text-transform:uppercase; background:var(--bg); color:var(--text-main);">
+            </div>
+            <div style="display: grid; grid-template-columns: 80px 1fr; gap: 6px; align-items: center;">
+                <label style="font-size:11px; font-weight:700;">Categoría:</label>
+                <select id="modCat" onchange="comprobarOpcionOtro(this)" style="padding:8px; font-weight:700; border-radius:6px; border:1px solid var(--border); text-align:center; text-align-last:center; background:var(--bg); color:var(--text-main); height:37px; appearance:none; width:100%;">
+                    <option value="-">OPCIÓN</option>
+                    <option value="BIG TICKET">BIG TICKET</option>
+                    <option value="MINI">MINI</option>
+                    <option value="INVENTARIADO">INVENTARIADO</option>
+                    <option value="MULTIFOLIO">MULTIFOLIO</option>
+                    <option value="REZAGOS">REZAGOS</option>
+                    <option value="EXTRAIDO">EXTRAIDO</option>
+                    <option value="RUTEO IL">RUTEO IL</option>
+                    <option value="RUTEO IL (MULTIFOLIOS)">RUTEO IL (MULTIFOLIOS)</option>
+                    <option value="OTRO">OTRO...</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 6px;" id="contenedorAccionesDuplicado">
+            <div style="display: flex; gap: 6px;">
+                <button onclick="actualizarRegistro()" style="flex:1; background: var(--success); color: white; border: none; padding: 12px; border-radius: 8px; font-weight: 800; font-size:12px;">✓ ACTUALIZAR</button>
+                <button onclick="cerrarModalDup()" style="flex:1; background: var(--bg); color: var(--text-main); border: 1px solid var(--border); padding: 12px; border-radius: 8px; font-weight: 800; font-size:12px;">CANCELAR</button>
+            </div>
+            <div id="wrapperEliminarAdmin" style="width: 100%;"></div>
+        </div>
+    </div>
+</div>
+
+<div id="modalAdminUsuarios" class="modal">
+    <div class="modal-content" style="max-width: 380px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+            <h4 style="font-weight:900;">⚙️ CONTROL PANEL</h4>
+            <button onclick="cerrarModalAdmin()" style="background:var(--bg); border:1px solid var(--border); padding:4px 10px; border-radius:4px;">&times;</button>
+        </div>
+
+        <div class="tabs-container">
+            <button class="tab-btn active" id="tabUsersBtn" onclick="cambiarTabAdmin('users')">👥 Operarios</button>
+            <button class="tab-btn" id="tabRulesBtn" onclick="cambiarTabAdmin('rules')">🛠️ Reglas / Bases</button>
+            <button class="tab-btn" id="tabMessagesBtn" onclick="cambiarTabAdmin('messages')">💬 Mensajes</button>
+        </div>
+
+        <div id="tabAdminUsuarios">
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; background: var(--bg); padding: 10px; border-radius: 6px; border: 1px solid var(--border);">
+                <input type="text" id="newOpName" placeholder="Usuario nuevo (ej: operario1)" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background:var(--card-bg); color:var(--text-main); font-weight:700; outline:none;">
+                
+                <div style="font-size: 10px; font-weight: 800; color: var(--text-muted); margin-top: 2px;">OPCIONES PERMITIDAS:</div>
+                <div class="perm-grid-box" style="grid-template-columns: 1fr 1fr;">
+                    <label class="perm-item-check"><input type="checkbox" id="p_historial" checked> 📋 Historial</label>
+                    <label class="perm-item-check"><input type="checkbox" id="p_avance"> 📈 Avance</label>
+                    <label class="perm-item-check"><input type="checkbox" id="p_base"> 📊 Ver Base</label>
+                    <label class="perm-item-check"><input type="checkbox" id="p_consultar"> 🔍 Consultar</label>
+                    <label class="perm-item-check"><input type="checkbox" id="p_cargar" checked> + Base RF</label>
+                    <label class="perm-item-check"><input type="checkbox" id="p_cargar_ruta" checked> 📂 +Base Ruta</label>
+                    <label class="perm-item-check"><input type="checkbox" id="p_panel"> ⚙️ Panel</label>
+                    <label class="perm-item-check" style="color:var(--danger); font-weight: 800;"><input type="checkbox" id="p_limpiar_historial"> 🗑️ Limpiar Historial</label>
+                    <label class="perm-item-check" style="color:var(--danger); font-weight: 800;"><input type="checkbox" id="p_borrar_base"> 🗑️ Borrar Base</label>
+                    <label class="perm-item-check" style="color:var(--route-color); font-weight: 800;"><input type="checkbox" id="p_auditoria"> 🔍 Auditoría/Reportes</label>
+                </div>
+
+                <button onclick="agregarOperarioAutorizado()" style="background: var(--primary); color: white; border: none; padding: 10px; border-radius: 6px; font-weight: 800; font-size:11px; cursor: pointer; margin-top: 4px; width: 100%;">+ CREAR CON ESTOS ACCESOS</button>
+            </div>
+            <div class="history-list" id="adminUsersList" style="max-height: 160px;"></div>
+        </div>
+
+        <div id="tabAdminRules" style="display: none;">
+            <div id="areaMantenimientoBaseRuta" style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 12px; background: rgba(239, 68, 68, 0.05); padding: 12px; border-radius: 6px; border: 1px dashed var(--danger);">
+                <div style="font-size: 10px; font-weight: 800; color: var(--danger); text-transform: uppercase; letter-spacing: 0.5px;">🚨 CONTROL MAESTRO DE RUTAS:</div>
+                <button onclick="borrarBaseRutaCompleta()" style="width: 100%; background: var(--danger); color: white; border: none; padding: 10px; border-radius: 6px; font-weight: 800; font-size: 11px; cursor: pointer; text-transform: uppercase;">🗑️ BORRAR BASE DE RUTA CENTRAL</button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; background: var(--bg); padding: 8px; border-radius: 6px;">
+                <input type="text" id="newRuleText" placeholder="Prefijo (ej: CLAR, RGD)" style="width:100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); background:var(--card-bg); color:var(--text-main); font-weight: 700; text-transform:uppercase; outline:none;">
+                <button onclick="agregarReglaTracking()" style="background: var(--success); color: white; border: none; padding: 10px; border-radius: 6px; font-weight: 800; font-size:11px;">+ AÑADIR FORMATO</button>
+            </div>
+            <div class="history-list" id="adminRulesList" style="max-height: 140px;"></div>
+        </div>
+
+        <div id="tabAdminMessages" style="display: none;">
+            <div style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; background: var(--bg); padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--border);">
+                <div>
+                    <label style="font-size: 10px; font-weight: 800; color: var(--text-muted); block; margin-bottom: 4px;">🎯 ENVIAR A:</label>
+                    <select id="msgDestinatario" style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid var(--border); font-weight: 700; font-size: 12px; background: var(--card-bg); color: var(--text-main); outline: none;">
+                        <option value="TODOS">📢 ENVIAR A TODOS (MASIVO)</option>
+                    </select>
+                </div>
+                <div style="margin-top: 4px;">
+                    <label style="font-size: 10px; font-weight: 800; color: var(--text-muted); block; margin-bottom: 4px;">💬 MENSAJE / INSTRUCCIÓN:</label>
+                    <div style="display: flex; gap: 6px; align-items: center;">
+                        <input type="text" id="msgTextoAdmin" placeholder="Escribe la instrucción aquí..." style="flex: 1; padding: 11px; border-radius: 6px; border: 1px solid var(--border); font-weight: 700; font-size: 13px; background: var(--card-bg); color: var(--text-main); outline: none;">
+                        <button onclick="enviarMensajeDesdeAdmin()" title="Enviar mensaje" style="background: var(--warning); color: #451a03; border: none; width: 44px; height: 41px; border-radius: 6px; font-size: 18px; display: flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            🚀
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div style="font-size: 10px; font-weight: 800; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">📋 Estado de respuestas en tiempo real:</div>
+            <div class="history-list" id="adminMessagesLog" style="max-height: 160px; gap: 6px;"></div>
+        </div>
+    </div>
+</div>
+
+<div id="modalReimprimir" class="modal" style="z-index: 6000;">
+    <div class="modal-content" style="max-width: 360px; text-align: center; border: 3px solid var(--print-color);">
+        <div style="font-size: 30px; margin-bottom: 10px;">🖨️</div>
+        <h4 style="color:var(--print-color); font-weight:900; margin-bottom: 5px;">¿REIMPRIMIR ETIQUETA?</h4>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">La guía <b id="txtReimprimirGuia" style="color:var(--text-main);"></b> ya fue escaneada e impresa anteriormente hoy.</p>
+        <div style="display: flex; gap: 8px; justify-content: center;">
+            <button onclick="ejecutarReimpresion()" style="flex:1; background: var(--print-color); color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 800;">✓ REIMPRIMIR</button>
+            <button onclick="cerrarModalReimprimir()" style="flex:1; background: var(--bg); color: var(--text-main); border: 1px solid var(--border); padding: 10px; border-radius: 8px; font-weight: 800;">CANCELAR</button>
+        </div>
+    </div>
+</div>
+
+<div id="modalSinProg" class="modal" style="z-index: 6000;">
+    <div class="modal-content" style="max-width: 360px; text-align: center; border: 3px solid var(--warning);">
+        <div style="font-size: 30px; margin-bottom: 10px;">⚠️</div>
+        <h4 style="color:var(--warning); font-weight:900; margin-bottom: 5px;">SIN PROGRAMACIÓN</h4>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">La guía <b id="txtSinProgGuia" style="color:var(--text-main);"></b> no está mapeada en la base de datos. Se registró como Impreso (Sin Prog).</p>
+        <button onclick="cerrarModalSinProg()" style="width:100%; background: var(--warning); color: #451a03; border: none; padding: 10px; border-radius: 8px; font-weight: 800;">ENTENDIDO</button>
+    </div>
+</div>
+
+<div id="modalAlertaRuta" class="modal" style="z-index: 6000;">
+    <div id="alertaRutaContent" class="modal-content" style="max-width: 360px; text-align: center;">
+        <h4 id="alertaRutaTitulo" style="font-weight:900; margin-bottom: 10px; text-transform: uppercase;"></h4>
+        <div id="alertaRutaMensaje" style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;"></div>
+        <button onclick="cerrarAlertaRuta()" style="width:100%; background: var(--bg); color: var(--text-main); border: 1px solid var(--border); padding: 10px; border-radius: 8px; font-weight: 800;">CERRAR</button>
+    </div>
+</div>
+
+<div id="modalDoffa" class="modal" style="z-index: 6000;">
+    <div class="modal-content" style="max-width: 360px; text-align: center; border: 3px solid var(--doffa-color);">
+        <div style="font-size: 30px; margin-bottom: 10px;">📦</div>
+        <h4 style="color:var(--doffa-color); font-weight:900; margin-bottom: 5px;">MODO DOFFA DETECTADO</h4>
+        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 15px;">Guía: <b id="txtDoffaGuia" style="color:var(--text-main);"></b><br>¿Cómo deseas procesar este registro?</p>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            <button onclick="registrarDoffa('BIG TICKET')" style="background: var(--doffa-color); color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 800; font-size: 11px;">REGISTRAR COMO BIG TICKET</button>
+            <button onclick="registrarDoffa('MINI')" style="background: var(--doffa-color); color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 800; font-size: 11px;">REGISTRAR COMO MINI</button>
+            <button onclick="registrarDoffa('EXTRAIDO')" style="background: var(--doffa-color); color: white; border: none; padding: 10px; border-radius: 8px; font-weight: 800; font-size: 11px;">REGISTRAR COMO EXTRAIDO</button>
+            <button onclick="soloVisualizarDoffa()" style="background: var(--bg); color: var(--text-main); border: 1px solid var(--border); padding: 10px; border-radius: 8px; font-weight: 800; font-size: 11px;">SOLO VISUALIZAR</button>
+            <button onclick="cerrarModalDoffa()" style="background: rgba(239, 68, 68, 0.1); color: var(--danger); border: none; padding: 10px; border-radius: 8px; font-weight: 800; font-size: 11px;">CANCELAR</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSyA0myKXhfkc4engnf-5c5GFi7Fc2wEcMhE",
+        authDomain: "escaneos-1b0e8.firebaseapp.com",
+        databaseURL: "https://escaneos-1b0e8-default-rtdb.firebaseio.com",
+        projectId: "escaneos-1b0e8",
+        storageBucket: "escaneos-1b0e8.firebasestorage.app",
+        messagingSenderId: "645259983510",
+        appId: "1:645259983510:web:0d411bd7ba0c73b64ca0b7",
+        measurementId: "G-TRTVCRSW6V"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const rtdb = firebase.database();
+
+    // NUEVAS FUNCIONES DE TRAZABILIDAD POR TURNOS
+    function parsearHoraAObj(horaStr) {
+        if(!horaStr) return new Date(0);
+        try {
+            let parts = horaStr.split(" - ");
+            if(parts.length !== 2) return new Date(0);
+            let [d, m, y] = parts[0].split("/");
+            let [horaMin, ampm] = parts[1].split(" ");
+            let [hh, mm] = horaMin.split(":");
+            hh = parseInt(hh, 10);
+            if (ampm === "PM" && hh < 12) hh += 12;
+            if (ampm === "AM" && hh === 12) hh = 0;
+            return new Date(y, m-1, d, hh, mm);
+        } catch(e) { return new Date(0); }
+    }
+
+    function obtenerJornadaLogica(dateObj = new Date()) {
+        let h = dateObj.getHours();
+        let refDate = new Date(dateObj);
+        
+        // Si es antes de las 8:00 AM, pertenece a la jornada "Noche" del día anterior
+        if (h < 8) {
+            refDate.setDate(refDate.getDate() - 1);
+        }
+        
+        let d = String(refDate.getDate()).padStart(2, '0');
+        let m = String(refDate.getMonth() + 1).padStart(2, '0');
+        let y = refDate.getFullYear();
+        let turno = (h >= 8 && h < 22) ? "DIA" : "NOCHE";
+        
+        return `${d}/${m}/${y}_${turno}`;
+    }
+
+    let db = []; 
+    let scans = [];
+    let usuariosPermitidos = {};
+    let reglasDinamicas = {};
+    let usuarioActivo = "";
+    let duplicadoKey = null;
+    let registrosFiltradosConsultaGlobal = [];
+    let mensajePendienteNodoKey = null;
+    let guiaAReimprimir = null; 
+    let procesandoExclusividad = false;
+
+    let donutChartInstance = null;
+    let barChartInstance = null;
+    let rankingChartInstance = null; 
+
+    let modoDoffaActivo = false;
+    let doffaGuiaActual = "";
+    let doffaInfoActual = null;
+
+    const DICCIONARIO_DIAS = { 'L': 'LUNES', 'M': 'MARTES', 'X': 'MIÉRCOLES', 'J': 'JUEVES', 'V': 'VIERNES', 'S': 'SÁBADO', 'D': 'DOMINGO' };
+    let baseDatosRutaNube = []; 
+    let modoValidarRutaActivo = false;
+    let modoImpresionActivo = false; 
+    let contadorEtiquetasOperarioSesion = 0; 
+
+    // Aquí registramos las opciones estandar para evitar que las reconozca como "OTRO..."
+    const opcionesEstandar = ["-", "BIG TICKET", "MINI", "INVENTARIADO", "MULTIFOLIO", "REZAGOS", "EXTRAIDO", "RUTEO IL", "RUTEO IL (MULTIFOLIOS)", "OTRO"];
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    const btnDrag = document.getElementById('btnFlotanteConsola');
+    let isDraggingBtn = false;
+    let hasMovedBtn = false;
+    let startPosX, startPosY;
+
+    btnDrag.addEventListener('mousedown', (e) => {
+        isDraggingBtn = true;
+        hasMovedBtn = false;
+        startPosX = e.clientX - btnDrag.offsetLeft;
+        startPosY = e.clientY - btnDrag.offsetTop;
+        btnDrag.style.cursor = 'grabbing';
+        btnDrag.style.transition = 'none';
+    });
+
+    document.addEventListener('mousemove', (e) => {
+        if (!isDraggingBtn) return;
+        hasMovedBtn = true;
+        let newX = e.clientX - startPosX;
+        let newY = e.clientY - startPosY;
+        
+        if (newX < 0) newX = 0;
+        if (newY < 0) newY = 0;
+        if (newX > window.innerWidth - btnDrag.offsetWidth) newX = window.innerWidth - btnDrag.offsetWidth;
+        if (newY > window.innerHeight - btnDrag.offsetHeight) newY = window.innerHeight - btnDrag.offsetHeight;
+
+        btnDrag.style.left = newX + 'px';
+        btnDrag.style.top = newY + 'px';
+        btnDrag.style.bottom = 'auto'; 
+        btnDrag.style.right = 'auto';
+    });
+
+    document.addEventListener('mouseup', () => {
+        if (isDraggingBtn) {
+            isDraggingBtn = false;
+            btnDrag.style.cursor = 'grab';
+            btnDrag.style.transition = 'background 0.2s'; 
+        }
+    });
+
+    btnDrag.addEventListener('touchstart', (e) => {
+        isDraggingBtn = true;
+        hasMovedBtn = false;
+        const touch = e.touches[0];
+        startPosX = touch.clientX - btnDrag.offsetLeft;
+        startPosY = touch.clientY - btnDrag.offsetTop;
+        btnDrag.style.transition = 'none';
+    }, {passive: false});
+
+    document.addEventListener('touchmove', (e) => {
+        if (!isDraggingBtn) return;
+        hasMovedBtn = true;
+        e.preventDefault(); 
+        const touch = e.touches[0];
+        let newX = touch.clientX - startPosX;
+        let newY = touch.clientY - startPosY;
+        
+        if (newX < 0) newX = 0;
+        if (newY < 0) newY = 0;
+        if (newX > window.innerWidth - btnDrag.offsetWidth) newX = window.innerWidth - btnDrag.offsetWidth;
+        if (newY > window.innerHeight - btnDrag.offsetHeight) newY = window.innerHeight - btnDrag.offsetHeight;
+
+        btnDrag.style.left = newX + 'px';
+        btnDrag.style.top = newY + 'px';
+        btnDrag.style.bottom = 'auto';
+    }, {passive: false});
+
+    document.addEventListener('touchend', () => {
+        if (isDraggingBtn) {
+            isDraggingBtn = false;
+            btnDrag.style.transition = 'background 0.2s';
+        }
+    });
+
+    btnDrag.addEventListener('click', (e) => {
+        if (hasMovedBtn) {
+            e.preventDefault();
+            return;
+        }
+        toggleConsolaFlotante();
+    });
+
+    function toggleHeaderMenu(e) {
+        if(e) e.stopPropagation();
+        const menu = document.getElementById('menuAccionesGlobales');
+        menu.classList.toggle('show-menu');
+    }
+
+    document.addEventListener('click', function(event) {
+        const wrapper = document.getElementById('wrapperMenuAcciones');
+        if (wrapper && !wrapper.contains(event.target)) {
+            document.getElementById('menuAccionesGlobales').classList.remove('show-menu');
+        }
+    });
+
+    function toggleConsolaFlotante() {
+        const panel = document.getElementById('consolaFlotanteDesk');
+        panel.classList.toggle('active');
+        if(panel.classList.contains('active')) {
+            setTimeout(() => document.getElementById('inpScanDesk').focus(), 100);
+        }
+    }
+
+    function toggleModoEscritorioMaster() {
+        const isChecked = document.getElementById('chkModoEscritorio').checked;
+        if(isChecked) {
+            document.body.classList.add('mode-desktop-active');
+            document.getElementById('consolaFlotanteDesk').classList.add('active'); 
+            setTimeout(() => document.getElementById('inpScanDesk').focus(), 100);
+        } else {
+            document.body.classList.remove('mode-desktop-active');
+            document.getElementById('consolaFlotanteDesk').classList.remove('active'); 
+            setTimeout(() => document.getElementById('inpScan').focus(), 100);
+        }
+    }
+
+    function comprobarOpcionOtro(selectElement) {
+        if (selectElement.value === "OTRO") {
+            const valorPersonalizado = prompt("Escribe el nombre de la opción personalizada:");
+            if (valorPersonalizado && valorPersonalizado.trim() !== "") {
+                const limpio = valorPersonalizado.trim().toUpperCase();
+                const opTemporal = selectElement.querySelector('.opt-custom');
+                if (opTemporal) opTemporal.remove();
+
+                const nuevaOpt = document.createElement('option');
+                nuevaOpt.value = limpio;
+                nuevaOpt.textContent = limpio;
+                nuevaOpt.className = 'opt-custom';
+                selectElement.insertBefore(nuevaOpt, selectElement.lastElementChild);
+                selectElement.value = limpio;
+            } else {
+                selectElement.value = "-";
+            }
+        }
+    }
+
+    function verificarSesionActiva() {
+        const localUser = localStorage.getItem('inv_session_user');
+        if (!localUser) {
+            document.getElementById('gateUsername').value = "";
+            document.getElementById('gatePassword').value = "";
+            document.getElementById('gatePassword').style.display = "none";
+            document.getElementById('modalGatekeeper').style.display = "flex";
+            document.getElementById('panelDesktopSwitch').style.display = "none"; 
+            desvincularEscuchaMensajes();
+        } else {
+            usuarioActivo = localUser;
+            document.getElementById('displayUser').textContent = usuarioActivo;
+            document.getElementById('modalGatekeeper').style.display = "none";
+            
+            if (esAdmin()) {
+                document.getElementById('panelDesktopSwitch').style.display = "flex";
+            } else {
+                document.getElementById('panelDesktopSwitch').style.display = "none";
+                document.getElementById('chkModoEscritorio').checked = false;
+                document.body.classList.remove('mode-desktop-active');
+            }
+
+            ajustarPermisosEstructura();
+            
+            if(document.body.classList.contains('mode-desktop-active')) {
+                document.getElementById('inpScanDesk').focus();
+            } else {
+                document.getElementById('inpScan').focus();
+            }
+            vincularEscuchaMensajes();
+        }
+    }
+
+    document.getElementById('gateUsername').addEventListener('input', function() {
+        if (this.value.trim().toLowerCase() === "ahuingor") {
+            document.getElementById('gatePassword').style.display = "block";
+        } else {
+            document.getElementById('gatePassword').style.display = "none";
+        }
+    });
+
+    function intentarIngresarSistema() {
+        let userVal = document.getElementById('gateUsername').value.trim();
+        let passVal = document.getElementById('gatePassword').value.trim();
+        if (!userVal) return alert("Ingresa un usuario.");
+
+        if (userVal.toLowerCase() === "ahuingor") {
+            if (passVal === "@lepus2211") {
+                usuarioActivo = "ahuingor";
+                localStorage.setItem('inv_session_user', usuarioActivo);
+                verificarSesionActiva();
+            } else {
+                alert("Contraseña incorrecta.");
+            }
+        } else {
+            if (!userVal.startsWith('@')) userVal = '@' + userVal;
+            userVal = userVal.toLowerCase();
+            let existe = Object.values(usuariosPermitidos).some(u => u.nombre.toLowerCase() === userVal);
+            if (!existe) return alert("Operario no autorizado.");
+            usuarioActivo = userVal;
+            localStorage.setItem('inv_session_user', usuarioActivo);
+            verificarSesionActiva();
+        }
+    }
+
+    function cerrarSesion() {
+        desvincularEscuchaMensajes();
+        localStorage.removeItem('inv_session_user');
+        usuarioActivo = "";
+        document.getElementById('displayUser').textContent = "@?";
+        document.getElementById('chkModoEscritorio').checked = false;
+        document.body.classList.remove('mode-desktop-active');
+        verificarSesionActiva();
+    }
+
+    function esAdmin() { return usuarioActivo === "ahuingor"; }
+
+    function ajustarPermisosEstructura() {
+        const btnHistorial = document.getElementById('btnHistorial');
+        const btnAvance = document.getElementById('btnVerAvanceAdmin');
+        const btnBase = document.getElementById('btnVerBaseAdmin');
+        const btnConsultar = document.getElementById('btnConsultarAdmin');
+        const btnPanel = document.getElementById('btnAdminPanel');
+        const btnCargar = document.getElementById('btnCargarBase');
+        const btnBorrar = document.getElementById('btnBorrarBase');
+        const btnLimpiarHistorial = document.getElementById('btnLimpiarHistorial');
+        const btnBaseRutaLocal = document.getElementById('btnBaseRutaLocal');
+        const areaMantenimientoBaseRuta = document.getElementById('areaMantenimientoBaseRuta');
+        const btnAuditLocal = document.getElementById('btnVerAuditoriaLocal');
+        const btnAuditDesk = document.getElementById('btnVerAuditoriaDesk');
+
+        btnHistorial.style.display = "flex";
+
+        if (esAdmin()) {
+            btnAvance.style.display = "flex";
+            btnBase.style.display = "flex";
+            btnConsultar.style.display = "flex";
+            btnPanel.style.display = "flex";
+            btnCargar.style.display = "flex";
+            btnBaseRutaLocal.style.display = "flex";
+            btnBorrar.style.display = "flex";
+            if (btnLimpiarHistorial) btnLimpiarHistorial.style.display = "inline-block";
+            if (areaMantenimientoBaseRuta) areaMantenimientoBaseRuta.style.display = "flex";
+            if (btnAuditLocal) btnAuditLocal.style.display = "block";
+            if (btnAuditDesk) btnAuditDesk.style.display = "block";
+            return;
+        }
+
+        let datosUsuario = Object.values(usuariosPermitidos).find(u => u.nombre.toLowerCase() === usuarioActivo.toLowerCase());
+        
+        if (datosUsuario && datosUsuario.permisos) {
+            const p = datosUsuario.permisos;
+            btnAvance.style.display = p.avance ? "flex" : "none";
+            btnBase.style.display = p.base ? "flex" : "none";
+            btnConsultar.style.display = p.consultar ? "flex" : "none";
+            btnPanel.style.display = p.panel ? "flex" : "none";
+            btnCargar.style.display = p.cargar ? "flex" : "none";
+            btnBaseRutaLocal.style.display = p.cargar_ruta ? "flex" : "none";
+            btnBorrar.style.display = p.borrar_base ? "flex" : "none";
+            if (btnLimpiarHistorial) btnLimpiarHistorial.style.display = p.limpiar_historial ? "inline-block" : "none";
+            if (areaMantenimientoBaseRuta) areaMantenimientoBaseRuta.style.display = p.borrar_base ? "flex" : "none";
+            if (btnAuditLocal) btnAuditLocal.style.display = p.auditoria ? "block" : "none";
+            if (btnAuditDesk) btnAuditDesk.style.display = p.auditoria ? "block" : "none";
+        } else {
+            btnAvance.style.display = "none";
+            btnBase.style.display = "none";
+            btnConsultar.style.display = "none";
+            btnPanel.style.display = "none";
+            btnCargar.style.display = "none";
+            btnBaseRutaLocal.style.display = "none";
+            btnBorrar.style.display = "none";
+            if (btnLimpiarHistorial) btnLimpiarHistorial.style.display = "none";
+            if (areaMantenimientoBaseRuta) areaMantenimientoBaseRuta.style.display = "none";
+            if (btnAuditLocal) btnAuditLocal.style.display = "none";
+            if (btnAuditDesk) btnAuditDesk.style.display = "none";
+        }
+    }
+
+    function sincronizarControlesEspejo(campo, valor) {
+        if(campo === 'bul') {
+            document.getElementById('inpBultos').value = valor;
+            document.getElementById('inpBultosDesk').value = valor;
+        } else if(campo === 'ubic') {
+            document.getElementById('inpUbic').value = valor;
+            document.getElementById('inpUbicDesk').value = valor;
+            localStorage.setItem('rackFijoAuto', valor); 
+            if (modoValidarRutaActivo) {
+                document.getElementById('dispRuta').textContent = valor.toUpperCase().trim() || "-";
+                document.getElementById('dispRutaDesk').textContent = valor.toUpperCase().trim() || "-";
+                actualizarUIRutaLocal();
+            }
+        } else if(campo === 'zona') {
+            document.getElementById('inpZona').value = valor;
+            document.getElementById('inpZonaDesk').value = valor;
+            localStorage.setItem('zonaFijaAuto', valor);
+        } else if(campo === 'cat') {
+            document.getElementById('inpCat').value = valor;
+            document.getElementById('inpCatDesk').value = valor;
+            localStorage.setItem('catFijaAuto', valor);
+        }
+    }
+
+    function actualizarDashboardImpresionAdmin() {
+        if (!esAdmin() || !modoImpresionActivo) return;
+        const dashContent = document.getElementById('adminPrintDashContent');
+        if (!dashContent) return;
+
+        const totalBase = baseDatosRutaNube.length;
+        let userStats = {};
+        let totalImpresosGlobal = 0;
+        let totalSinEtiquetaGlobal = 0;
+
+        scans.forEach(s => {
+            let user = s.usuario || "Desconocido";
+            if (!userStats[user]) userStats[user] = { impresos: 0, sinEtiqueta: 0 };
+
+            if (s.cat && s.cat.startsWith("IMPRESO")) {
+                userStats[user].impresos++;
+                totalImpresosGlobal++;
+            } else {
+                userStats[user].sinEtiqueta++;
+                totalSinEtiquetaGlobal++;
+            }
+        });
+
+        let pctAvance = totalBase > 0 ? ((totalImpresosGlobal / totalBase) * 100).toFixed(1) : 0;
+
+        let html = `
+            <div style="display:flex; gap:10px; margin-bottom:10px;">
+                <div style="flex:1; background:var(--bg); padding:8px; border-radius:6px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:10px; color:var(--text-muted); font-weight:700;">TOTAL BD RUTA</div>
+                    <div style="font-size:16px; font-weight:900; color:var(--route-color);">${totalBase}</div>
+                </div>
+                <div style="flex:1; background:var(--bg); padding:8px; border-radius:6px; text-align:center; border:1px solid var(--border);">
+                    <div style="font-size:10px; color:var(--text-muted); font-weight:700;">AVANCE ETIQUETAS</div>
+                    <div style="font-size:16px; font-weight:900; color:var(--print-color);">${totalImpresosGlobal} <span style="font-size:11px; color:var(--text-muted);">(${pctAvance}%)</span></div>
+                </div>
+            </div>
+            <table class="resumen-tabla" style="width:100%;">
+                <thead>
+                    <tr>
+                        <th>Operario</th>
+                        <th style="text-align:center;">🖨️ Impresas</th>
+                        <th style="text-align:center;">📦 Resto</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        for (let u in userStats) {
+            html += `<tr>
+                <td><b>${u}</b></td>
+                <td style="text-align:center; color:var(--print-color); font-weight:800;">${userStats[u].impresos}</td>
+                <td style="text-align:center; color:var(--text-muted); font-weight:700;">${userStats[u].sinEtiqueta}</td>
+            </tr>`;
+        }
+
+        html += `</tbody></table>`;
+        dashContent.innerHTML = html;
+    }
+
+    function toggleModoValidarRuta() {
+        modoValidarRutaActivo = document.getElementById('chkModoValidarRuta').checked;
+        document.getElementById('chkModoValidarRutaDesk').checked = modoValidarRutaActivo;
+
+        if (modoValidarRutaActivo && !procesandoExclusividad) {
+            procesandoExclusividad = true;
+            if(document.getElementById('chkModoImprimir').checked) { document.getElementById('chkModoImprimir').checked = false; toggleModoImprimirLocal(); }
+            if(document.getElementById('chkModoDoffa').checked) { document.getElementById('chkModoDoffa').checked = false; toggleModoDoffa(); }
+            procesandoExclusividad = false;
+        }
+
+        const bloqueValores = document.getElementById('bloqueValidarRutaLocal');
+        const bloqueValoresDesk = document.getElementById('bloqueRutaDeskBox');
+        const itemsDashboardRuta = document.querySelectorAll('.mod-ruta-item');
+        const inp = document.getElementById('inpScan');
+        const inpDesk = document.getElementById('inpScanDesk');
+        const inpUbicVal = document.getElementById('inpUbic').value.toUpperCase().trim();
+
+        if(modoValidarRutaActivo) {
+            bloqueValores.style.display = "block";
+            bloqueValoresDesk.style.display = "flex";
+            itemsDashboardRuta.forEach(el => el.style.display = "block");
+            inp.placeholder = "🚚 ESCANEAR EN RUTA ACTUAL...";
+            inpDesk.placeholder = "🚚 ESCANEAR EN RUTA ACTUAL (PC)...";
+            document.getElementById('dispRuta').textContent = inpUbicVal || "-";
+            document.getElementById('dispRutaDesk').textContent = inpUbicVal || "-";
+            actualizarUIRutaLocal();
+        } else {
+            bloqueValores.style.display = "none";
+            bloqueValoresDesk.style.display = "none";
+            itemsDashboardRuta.forEach(el => el.style.display = "none");
+            toggleModoForzar(); 
+            
+            document.getElementById('dispDia').textContent = "-";
+            document.getElementById('dispSec').textContent = "-";
+            document.getElementById('dispRuta').textContent = "-";
+            document.getElementById('dispDiaDesk').textContent = "-";
+            document.getElementById('dispSecDesk').textContent = "-";
+            document.getElementById('dispRutaDesk').textContent = "-";
+        }
+        
+        if(document.body.classList.contains('mode-desktop-active')) { inpDesk.focus(); } else { inp.focus(); }
+    }
+
+    function toggleModoImprimirLocal() {
+        modoImpresionActivo = document.getElementById('chkModoImprimir').checked;
+        document.getElementById('chkModoImprimirDesk').checked = modoImpresionActivo;
+
+        if (modoImpresionActivo && !procesandoExclusividad) {
+            procesandoExclusividad = true;
+            if(document.getElementById('chkModoValidarRuta').checked) { document.getElementById('chkModoValidarRuta').checked = false; toggleModoValidarRuta(); }
+            if(document.getElementById('chkModoDoffa').checked) { document.getElementById('chkModoDoffa').checked = false; toggleModoDoffa(); }
+            procesandoExclusividad = false;
+        }
+
+        const elItemPrint = document.querySelectorAll('.mod-print-item');
+        const inp = document.getElementById('inpScan');
+        const inpDesk = document.getElementById('inpScanDesk');
+        const adminDash = document.getElementById('adminPrintDashWrapper');
+
+        if (modoImpresionActivo) {
+            elItemPrint.forEach(el => el.style.display = "block");
+            inp.placeholder = "🖨️ ESCANEO CON IMPRESIÓN COLD...";
+            inpDesk.placeholder = "🖨️ ESCANEO CON IMPRESIÓN COLD (PC)...";
+            document.getElementById('cantEtiquetasOperario').textContent = contadorEtiquetasOperarioSesion;
+            if (esAdmin() && adminDash) { adminDash.style.display = 'block'; actualizarDashboardImpresionAdmin(); }
+        } else {
+            elItemPrint.forEach(el => el.style.display = "none");
+            toggleModoForzar(); 
+            if (adminDash) { adminDash.style.display = 'none'; }
+        }
+    }
+
+    function toggleModoDoffa() {
+        modoDoffaActivo = document.getElementById('chkModoDoffa').checked;
+        document.getElementById('chkModoDoffaDesk').checked = modoDoffaActivo;
+        
+        if (modoDoffaActivo && !procesandoExclusividad) {
+            procesandoExclusividad = true;
+            if(document.getElementById('chkModoValidarRuta').checked) { document.getElementById('chkModoValidarRuta').checked = false; toggleModoValidarRuta(); }
+            if(document.getElementById('chkModoImprimir').checked) { document.getElementById('chkModoImprimir').checked = false; toggleModoImprimirLocal(); }
+            procesandoExclusividad = false;
+        }
+
+        const inp = document.getElementById('inpScan');
+        const inpDesk = document.getElementById('inpScanDesk');
+        
+        if (modoDoffaActivo) {
+            inp.placeholder = "📦 MODO DOFFA ACTIVO...";
+            inpDesk.placeholder = "📦 MODO DOFFA ACTIVO (PC)...";
+            inp.style.border = '3px solid var(--doffa-color)';
+            inpDesk.style.border = '3px solid var(--doffa-color)';
+        } else {
+            toggleModoForzar(); 
+        }
+        
+        if(document.body.classList.contains('mode-desktop-active')) { inpDesk.focus(); } else { inp.focus(); }
+    }
+
+    function toggleModoForzar() {
+        const chk = document.getElementById('chkModoForzar');
+        document.getElementById('chkModoForzarDesk').checked = chk.checked;
+
+        const inp = document.getElementById('inpScan');
+        const inpDesk = document.getElementById('inpScanDesk');
+        
+        if(modoValidarRutaActivo || modoImpresionActivo || modoDoffaActivo) {
+            if (chk.checked) {
+                inp.style.border = '3px dashed #ef4444';
+                inpDesk.style.border = '3px dashed #ef4444';
+            } else {
+                if (modoDoffaActivo) {
+                    inp.style.border = '3px solid var(--doffa-color)';
+                    inpDesk.style.border = '3px solid var(--doffa-color)';
+                } else {
+                    inp.style.border = '3px solid var(--primary)';
+                    inpDesk.style.border = '3px solid var(--primary)';
+                }
+            }
+            return; 
+        }
+        
+        if (chk.checked) {
+            inp.placeholder = '⚠️ FORZAR ACTIVO...';
+            inpDesk.placeholder = '⚠️ FORZAR ACTIVO (PC)...';
+            inp.style.border = '3px dashed #ef4444';
+            inpDesk.style.border = '3px dashed #ef4444';
+        } else {
+            inp.placeholder = 'ESCANEÉ AQUÍ...';
+            inpDesk.placeholder = 'ESCANEÉ AQUÍ (PC)...';
+            inp.style.border = '3px solid var(--primary)';
+            inpDesk.style.border = '3px solid var(--primary)';
+        }
+    }
+
+    function abrirModalAuditoria() {
+        if (!esAdmin()) {
+            let datosUsuario = Object.values(usuariosPermitidos).find(u => u.nombre.toLowerCase() === usuarioActivo.toLowerCase());
+            if (!datosUsuario || !datosUsuario.permisos || !datosUsuario.permisos.auditoria) {
+                alert("Acceso denegado: No tienes permiso para visualizar o imprimir la Auditoría Global.");
+                return;
+            }
+        }
+
+        if(document.getElementById('filtroAuditDia')) document.getElementById('filtroAuditDia').value = '';
+        if(document.getElementById('filtroAuditRuta')) document.getElementById('filtroAuditRuta').value = '';
+        if(document.getElementById('filtroAuditSec')) document.getElementById('filtroAuditSec').value = '';
+
+        document.getElementById('modalAuditoriaRutas').style.display = 'flex';
+        calcularResumenGlobalRutas(); 
+    }
+
+    function cerrarModalAuditoria() {
+        document.getElementById('modalAuditoriaRutas').style.display = 'none';
+        if(document.body.classList.contains('mode-desktop-active')) {
+            document.getElementById('inpScanDesk').focus();
+        } else {
+            document.getElementById('inpScan').focus();
+        }
+    }
+
+    function calcularResumenGlobalRutas() {
+        let reporte = {}; 
+
+        let filtroDia = document.getElementById('filtroAuditDia') ? document.getElementById('filtroAuditDia').value.trim().toUpperCase() : "";
+        let filtroRuta = document.getElementById('filtroAuditRuta') ? document.getElementById('filtroAuditRuta').value.trim().toUpperCase() : "";
+        let filtroSec = document.getElementById('filtroAuditSec') ? document.getElementById('filtroAuditSec').value.trim().toUpperCase() : "";
+
+        baseDatosRutaNube.forEach(b => {
+            let diaOriginal = b.dia || "SIN ASIGNAR";
+            let rutaOriginal = b.ruta || "SIN RUTA";
+            let secOriginal = b.secuencia || "S/S";
+
+            let dia = diaOriginal.toUpperCase();
+            let ruta = rutaOriginal.toUpperCase();
+            let sec = secOriginal.toUpperCase();
+            let guia = b.seguimiento;
+
+            if (filtroDia && !dia.includes(filtroDia)) return;
+            if (filtroRuta && !ruta.includes(filtroRuta)) return;
+            if (filtroSec && !sec.includes(filtroSec)) return;
+
+            if (!reporte[dia]) reporte[dia] = {};
+            if (!reporte[dia][ruta]) reporte[dia][ruta] = { base: [], escaneados: [] };
+
+            reporte[dia][ruta].base.push(guia);
+        });
+
+        scans.forEach(s => {
+            if (s.cat && s.cat.startsWith("IMPRESO")) return;
+
+            if (s.ruta && s.ruta !== "SIN PROG." && s.ruta !== "FORZADO") {
+                let dia = (s.dia || "SIN ASIGNAR").toUpperCase();
+                let ruta = s.ruta.toUpperCase();
+                let sec = (s.sec || "S/S").toUpperCase();
+                let guia = s.guia;
+
+                if (filtroDia && !dia.includes(filtroDia)) return;
+                if (filtroRuta && !ruta.includes(filtroRuta)) return;
+                if (filtroSec && !sec.includes(filtroSec)) return;
+
+                if (reporte[dia] && reporte[dia][ruta]) {
+                    if (!reporte[dia][ruta].escaneados.includes(guia)) {
+                        reporte[dia][ruta].escaneados.push(guia);
+                    }
+                }
+            }
+        });
+
+        let html = '<div style="display:flex; flex-direction:column; gap:14px;">';
+        let tieneDatos = false;
+
+        for (let dia in reporte) {
+            tieneDatos = true;
+            let rutasDelDia = reporte[dia];
+            
+            html += `
+            <div style="border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--card-bg);">
+                <div style="background: var(--route-color); color: white; padding: 10px 14px; font-size: 14px; font-weight: 900;">
+                    📅 DÍA: ${dia}
+                </div>
+                <table class="resumen-tabla" style="width: 100%; text-align: center; margin-top: 0;">
+                    <thead>
+                        <tr style="background: rgba(33, 150, 243, 0.05);">
+                            <th style="text-align: left; padding-left: 14px;">📍 RUTA</th>
+                            <th>📋 TOTAL BASE</th>
+                            <th style="color: #059669;">✅ ESCANEADOS</th>
+                            <th style="color: #dc2626;">❌ FALTANTES</th>
+                            <th>ACCIÓN</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            for (let ruta in rutasDelDia) {
+                let total = rutasDelDia[ruta].base.length;
+                let escaneados = rutasDelDia[ruta].escaneados.length;
+                let faltantes = rutasDelDia[ruta].base.filter(g => !rutasDelDia[ruta].escaneados.includes(g));
+                let idFaltantes = `faltantes_${dia}_${ruta}`.replace(/[^a-zA-Z0-9]/g, ''); 
+
+                let btnFaltantes = faltantes.length > 0 
+                    ? `<button onclick="document.getElementById('${idFaltantes}').style.display = document.getElementById('${idFaltantes}').style.display === 'none' ? 'table-row' : 'none'" style="background: var(--bg); border: 1px solid var(--border); padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 800; cursor: pointer; color: var(--danger);">VER FALTANTES ▾</button>`
+                    : `<span style="font-size: 10px; font-weight: 800; color: var(--success);">Ruta Completa</span>`;
+
+                html += `
+                        <tr>
+                            <td style="text-align: left; padding-left: 14px; font-weight: 800;">${ruta}</td>
+                            <td style="font-weight: 700; color: var(--text-muted);">${total}</td>
+                            <td style="font-weight: 800; color: #059669;">${escaneados}</td>
+                            <td style="font-weight: 800; color: #dc2626;">${faltantes.length}</td>
+                            <td>${btnFaltantes}</td>
+                        </tr>
+                        <tr id="${idFaltantes}" style="display:none; background: #fef2f2;">
+                            <td colspan="5" style="padding: 12px; text-align: left; font-family: monospace; font-size: 12px; color: #b91c1c; border-top: 1px dashed #fca5a5;">
+                                <b>Folios pendientes:</b><br>
+                                ${faltantes.join(', ')}
+                            </td>
+                        </tr>
+                `;
+            }
+            html += `</tbody></table></div>`;
+        }
+        html += '</div>';
+
+        if (!tieneDatos) html = '<div class="resumen-vacio">No hay datos de rutas subidos que coincidan con la búsqueda.</div>';
+
+        document.getElementById('contenedorAuditoriaModal').innerHTML = html;
+    }
+
+    function abrirModalDoffa(guia, info) {
+        doffaGuiaActual = guia;
+        doffaInfoActual = info;
+        document.getElementById('txtDoffaGuia').textContent = guia;
+        document.getElementById('modalDoffa').style.display = 'flex';
+        playBeep(300);
+    }
+
+    function cerrarModalDoffa() {
+        document.getElementById('modalDoffa').style.display = 'none';
+        doffaGuiaActual = "";
+        doffaInfoActual = null;
+        if(document.body.classList.contains('mode-desktop-active')) {
+            document.getElementById('inpScanDesk').focus();
+        } else {
+            document.getElementById('inpScan').focus();
+        }
+    }
+
+    function registrarDoffa(categoria) {
+        const originalCat = document.getElementById('inpCat').value;
+        const originalCatDesk = document.getElementById('inpCatDesk').value;
+        
+        document.getElementById('inpCat').value = categoria;
+        intentarRegistrar(doffaGuiaActual, doffaInfoActual);
+        
+        document.getElementById('inpCat').value = originalCat;
+        document.getElementById('inpCatDesk').value = originalCatDesk;
+        
+        cerrarModalDoffa();
+    }
+
+    function soloVisualizarDoffa() {
+        const t = document.getElementById('toast');
+        t.textContent = "👁️ VISUALIZADO (NO REGISTRADO)";
+        t.style.background = "var(--doffa-color)";
+        t.style.display = "block";
+        
+        document.getElementById('dispLast').textContent = doffaGuiaActual;
+        document.getElementById('dispLastDesk').textContent = doffaGuiaActual;
+        
+        setTimeout(() => { 
+            t.style.display = "none"; 
+            t.textContent = "ÉXITO ✓"; 
+            t.style.background = "#10b981"; 
+        }, 1500);
+        
+        cerrarModalDoffa();
+    }
+
+    window.onload = () => {
+        const savedTheme = localStorage.getItem('inv_theme') || 'light';
+        document.documentElement.setAttribute('data-theme', savedTheme);
+        
+        const inpUbic = document.getElementById('inpUbic');
+        const inpZona = document.getElementById('inpZona');
+        const inpCat = document.getElementById('inpCat');
+        
+        if (localStorage.getItem('rackFijoAuto')) {
+            const v = localStorage.getItem('rackFijoAuto');
+            inpUbic.value = v;
+            document.getElementById('inpUbicDesk').value = v;
+        }
+        if (localStorage.getItem('zonaFijaAuto')) {
+            const v = localStorage.getItem('zonaFijaAuto');
+            inpZona.value = v;
+            document.getElementById('inpZonaDesk').value = v;
+        }
+        if (localStorage.getItem('catFijaAuto')) {
+            const catGuardada = localStorage.getItem('catFijaAuto');
+            if (!opcionesEstandar.includes(catGuardada)) {
+                const nuevaOpt = document.createElement('option');
+                nuevaOpt.value = catGuardada;
+                nuevaOpt.textContent = catGuardada;
+                nuevaOpt.className = 'opt-custom';
+                inpCat.insertBefore(nuevaOpt, inpCat.lastElementChild);
+                
+                const nuevaOptDesk = nuevaOpt.cloneNode(true);
+                document.getElementById('inpCatDesk').insertBefore(nuevaOptDesk, document.getElementById('inpCatDesk').lastElementChild);
+            }
+            inpCat.value = catGuardada;
+            document.getElementById('inpCatDesk').value = catGuardada;
+        }
+
+        inpUbic.addEventListener('input', function() { sincronizarControlesEspejo('ubic', this.value); });
+        inpZona.addEventListener('input', function() { sincronizarControlesEspejo('zona', this.value); });
+        inpCat.addEventListener('change', function() { sincronizarControlesEspejo('cat', this.value); });
+
+        rtdb.ref("inventario_base").on("value", (snapshot) => {
+            db = [];
+            snapshot.forEach((child) => {
+                let item = child.val();
+                item.key = child.key; 
+                db.push(item);
+            });
+            actualizarIndicadorBase();
+            if(document.getElementById('modalBaseAdmin').style.display === 'flex') {
+                filtrarBaseAdmin();
+            }
+            if(document.getElementById('modalAvanceAdmin').style.display === 'flex') {
+                calcularAvanceUsuarios();
+            }
+            if(document.getElementById('modalAuditoriaRutas').style.display === 'flex') {
+                calcularResumenGlobalRutas();
+            }
+        });
+
+        rtdb.ref("inventario_ruta_il").on("value", (snapshot) => {
+            baseDatosRutaNube = [];
+            snapshot.forEach((child) => {
+                baseDatosRutaNube.push(child.val());
+            });
+            document.getElementById('statsTotalRutaLocal').textContent = `Base de datos en la nube: ${baseDatosRutaNube.length} registros totales`;
+            if(modoValidarRutaActivo) actualizarUIRutaLocal();
+            actualizarDashboardImpresionAdmin();
+            if(document.getElementById('modalAuditoriaRutas').style.display === 'flex') {
+                calcularResumenGlobalRutas();
+            }
+        });
+
+        rtdb.ref("escaneos_compartidos").on("value", (snapshot) => {
+            scans = [];
+            snapshot.forEach((child) => {
+                let node = child.val();
+                node.key = child.key;
+                scans.unshift(node);
+            });
+            actualizarListaTarjetas();
+            if(document.getElementById('modalConsultaAdmin').style.display === 'flex') {
+                ejecutarFiltroAdmin();
+            }
+            calcularAvanceUsuarios();
+            if(modoValidarRutaActivo) {
+                actualizarUIRutaLocal();
+            }
+            actualizarDashboardImpresionAdmin();
+            actualizarDashboardKPI(); 
+            if(document.getElementById('modalAuditoriaRutas').style.display === 'flex') {
+                calcularResumenGlobalRutas();
+            }
+        });
+
+        rtdb.ref("usuarios_sistema").on("value", (snapshot) => {
+            usuariosPermitidos = snapshot.val() || {};
+            renderizarListaUsuariosAdmin();
+            actualizarSelectDestinatariosMensajes();
+            verificarSesionActiva();
+        });
+
+        rtdb.ref("reglas_tracking").on("value", (snapshot) => {
+            reglasDinamicas = snapshot.val() || {};
+            if(Object.keys(reglasDinamicas).length === 0) {
+                inicializarReglasNativas(); 
+            } else {
+                renderizarListaRulesAdmin();
+            }
+        });
+
+        rtdb.ref("mensajeria_operativa").on("value", (snapshot) => {
+            if (esAdmin()) {
+                renderizarLogsMensajesAdmin(snapshot.val());
+            }
+        });
+    };
+
+    function cargarExcelRutaNube(e) {
+        if (!usuarioActivo) return;
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        reader.onload = function(evt) {
+            try {
+                const data = new Uint8Array(evt.target.result);
+                const workbook = XLSX.read(data, {type: 'array'});
+                const json = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                
+                const datosMapeados = json.map(r => {
+                    const guiaBase = buscarColumna(r, ["GUIA", "SEGUIMIENTO", "TRACKING"]) || "";
+                    const rutaValor = buscarColumna(r, ["RUTA"]) || "";
+                    const diaValor  = buscarColumna(r, ["DIA"]) || "";
+                    const seqValor  = buscarColumna(r, ["SECUENCIA", "SEC"]) || "S/S";
+
+                    let segLimpio = limpiarTexto(guiaBase);
+                    let diaLetra = String(diaValor).toUpperCase().trim();
+                    let diaCompleto = DICCIONARIO_DIAS[diaLetra] || diaLetra || 'NO ASIGNADO';
+
+                    return {
+                        seguimiento: segLimpio, 
+                        ruta: String(rutaValor).toUpperCase().trim(),
+                        dia: diaCompleto,
+                        secuencia: String(seqValor).toUpperCase().trim()
+                    };
+                }).filter(item => item.seguimiento !== ''); 
+
+                rtdb.ref("inventario_ruta_il").set(datosMapeados).then(() => {
+                    alert('¡Éxito! Base de rutas mapeada en el servidor central usando la estructura homologada. ' + datosMapeados.length + ' registros inyectados.');
+                }).catch(err => alert("Error al subir los datos: " + err.message));
+                
+            } catch(err) {
+                alert('Error al procesar el archivo de rutas.');
+            }
+        };
+        reader.readAsArrayBuffer(file);
+    }
+
+    function borrarBaseRutaCompleta() {
+        if (confirm("🚨 ¿Eliminar base central de rutas?")) {
+            rtdb.ref("inventario_ruta_il").remove().then(() => {
+                alert("Base de rutas borrada.");
+                cerrarModalAdmin();
+            }).catch(err => alert("Error: " + err.message));
+        }
+    }
+
+    function emitirSonidoCoincidenciaRuta() {
+        try {
+            let osc1 = audioCtx.createOscillator();
+            let gain1 = audioCtx.createGain();
+            osc1.type = 'sine';
+            osc1.frequency.setValueAtTime(900, audioCtx.currentTime); 
+            gain1.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            gain1.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+            osc1.connect(gain1);
+            gain1.connect(audioCtx.destination);
+            osc1.start();
+            osc1.stop(audioCtx.currentTime + 0.08);
+
+            setTimeout(() => {
+                let osc2 = audioCtx.createOscillator();
+                let gain2 = audioCtx.createGain();
+                osc2.type = 'sine';
+                osc2.frequency.setValueAtTime(1300, audioCtx.currentTime); 
+                gain2.gain.setValueAtTime(0.08, audioCtx.currentTime);
+                gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+                osc2.connect(gain2);
+                gain2.connect(audioCtx.destination);
+                osc2.start();
+                osc2.stop(audioCtx.currentTime + 0.08);
+            }, 90);
+        } catch (e) { console.log(e); }
+    }
+
+    function mostrarModalRutaAlert(tipo, titulo, mensaje, tiempoCierre) {
+        const modal = document.getElementById('modalAlertaRuta');
+        const content = document.getElementById('alertaRutaContent');
+        const txtTitulo = document.getElementById('alertaRutaTitulo');
+        const txtMensaje = document.getElementById('alertaRutaMensaje');
+
+        content.className = "modal-content"; 
+        if (tipo === 'success') { content.classList.add('alert-success'); txtTitulo.style.color = '#4CAF50'; }
+        else if (tipo === 'error') { content.classList.add('alert-error'); txtTitulo.style.color = '#f44336'; }
+        else if (tipo === 'warning') { content.classList.add('alert-warning'); txtTitulo.style.color = '#FF9800'; }
+
+        txtTitulo.innerHTML = titulo;
+        txtMensaje.innerHTML = mensaje;
+        modal.style.display = 'flex';
+
+        if (tiempoCierre > 0) {
+            setTimeout(() => { cerrarAlertaRuta(); }, tiempoCierre);
+        }
+    }
+
+    function cerrarAlertaRuta() {
+        document.getElementById('modalAlertaRuta').style.display = 'none';
+        if(document.body.classList.contains('mode-desktop-active')) {
+            document.getElementById('inpScanDesk').focus();
+        } else {
+            document.getElementById('inpScan').focus();
+        }
+    }
+
+    function mostrarModalSinProg(guia) {
+        document.getElementById('txtSinProgGuia').textContent = guia;
+        document.getElementById('modalSinProg').style.display = 'flex';
+        playBeep(300);
+    }
+    function cerrarModalSinProg() {
+        document.getElementById('modalSinProg').style.display = 'none';
+        if(document.body.classList.contains('mode-desktop-active')) {
+            document.getElementById('inpScanDesk').focus();
+        } else {
+            document.getElementById('inpScan').focus();
+        }
+    }
+
+    function actualizarUIRutaLocal() {
+        const rutaActiva = document.getElementById('inpUbic').value.toUpperCase().trim(); 
+        const registrosEnRuta = baseDatosRutaNube.filter(b => b.ruta === rutaActiva);
+        const totalEnBaseRuta = registrosEnRuta.length;
+        
+        const escEnRuta = scans.filter(e => e.ruta === rutaActiva && !(e.cat && e.cat.startsWith("IMPRESO")));
+        const totalEscaneadosUnicos = escEnRuta.length;
+
+        document.getElementById('cantSubida').textContent = totalEnBaseRuta;
+        document.getElementById('cantFaltante').textContent = totalEnBaseRuta - totalEscaneadosUnicos;
+        
+        calcularResumenUbicacionesRutaLocal();
+    }
+
+    function calcularResumenUbicacionesRutaLocal() {
+        const rutaActiva = document.getElementById('inpUbic').value.toUpperCase().trim();
+        const contenedor = document.getElementById('resumenUbicaciones');
+        const contenedorDesk = document.getElementById('resumenUbicacionesDesk');
+        
+        if (!rutaActiva) {
+            const vacioHtml = '<div class="resumen-vacio">Escribe una ruta programada en "Ubicación" para calcular.</div>';
+            contenedor.innerHTML = vacioHtml;
+            if(contenedorDesk) contenedorDesk.innerHTML = vacioHtml;
+            return;
+        }
+
+        const escaneosFiltrados = scans.filter(e => e.ruta === rutaActiva && !(e.cat && e.cat.startsWith("IMPRESO")));
+        if (escaneosFiltrados.length === 0) {
+            const sinFoliosHtml = '<div class="resumen-vacio">No hay folios en el servidor bajo esta ruta.</div>';
+            contenedor.innerHTML = sinFoliosHtml;
+            if(contenedorDesk) contenedorDesk.innerHTML = sinFoliosHtml;
+            return;
+        }
+
+        const mapaUbicaciones = {};
+        escaneosFiltrados.forEach(e => {
+            const ubicacionLimpia = e.zona ? e.zona.toUpperCase().trim() : 'SIN ZONA';
+            if (!mapaUbicaciones[ubicacionLimpia]) {
+                mapaUbicaciones[ubicacionLimpia] = { folios: 0, bultos: 0 };
+            }
+            mapaUbicaciones[ubicacionLimpia].folios += 1;
+            mapaUbicaciones[ubicacionLimpia].bultos += (parseInt(e.bul) || 1);
+        });
+
+        let htmlTabla = `
+            <table class="resumen-tabla">
+                <thead>
+                    <tr>
+                        <th>📍 Zona / Módulo</th>
+                        <th style="text-align:center">📋 Folios</th>
+                        <th style="text-align:center">📦 Bultos</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        for (const ubic in mapaUbicaciones) {
+            htmlTabla += `
+                <tr>
+                    <td><b>${ubic}</b></td>
+                    <td style="text-align:center; font-weight:bold; color:#00BCD4">${mapaUbicaciones[ubic].folios}</td>
+                    <td style="text-align:center; font-weight:bold; color:#4CAF50">${mapaUbicaciones[ubic].bultos}</td>
+                </tr>
+            `;
+        }
+
+        htmlTabla += `</tbody></table>`;
+        contenedor.innerHTML = htmlTabla;
+        if(contenedorDesk) contenedorDesk.innerHTML = htmlTabla;
+    }
+
+    function vincularEscuchaMensajes() {
+        rtdb.ref("mensajeria_operativa").on("value", (snapshot) => {
+            const data = snapshot.val();
+            if (!data) {
+                ocultarModalMensaje();
+                return;
+            }
+
+            let mensajeParaMostrar = null;
+            let foundKey = null;
+
+            Object.keys(data).forEach(k => {
+                let msgNode = data[k];
+                if ((msgNode.destino === "TODOS" || msgNode.destino === usuarioActivo) && msgNode.estado === "PENDIENTE") {
+                    if (msgNode.destino === "TODOS" && msgNode.respuestasMasivas && msgNode.respuestasMasivas[usuarioActivo.replace('@','_')]) {
+                        return; 
+                    }
+                    mensajeParaMostrar = msgNode.mensaje;
+                    foundKey = k;
+                }
+            });
+
+            if (mensajeParaMostrar && usuarioActivo !== "ahuingor") {
+                mensajePendienteNodoKey = foundKey;
+                document.getElementById('txtMensajeRecibido').textContent = mensajeParaMostrar;
+                document.getElementById('modalMensajeOperario').style.display = 'flex';
+                playBeep(400); setTimeout(() => playBeep(400), 200);
+            } else {
+                ocultarModalMensaje();
+            }
+        });
+    }
+
+    function desvincularEscuchaMensajes() {
+        rtdb.ref("mensajeria_operativa").off();
+        ocultarModalMensaje();
+    }
+
+    function ocultarModalMensaje() {
+        document.getElementById('modalMensajeOperario').style.display = 'none';
+        mensajePendienteNodoKey = null;
+    }
+
+    function responderMensajeControl(respuestaTexto) {
+        if (!mensajePendienteNodoKey) return;
+
+        rtdb.ref("mensajeria_operativa/" + mensajePendienteNodoKey).transaction((currentData) => {
+            if (currentData) {
+                if (currentData.destino === "TODOS") {
+                    if (!currentData.respuestasMasivas) currentData.respuestasMasivas = {};
+                    currentData.respuestasMasivas[usuarioActivo.replace('@','_')] = {
+                        usuario: usuarioActivo,
+                        respuesta: respuestaTexto,
+                        hora: obtenerFechaYHoraActual()
+                    };
+                } else {
+                    currentData.estado = "RESPONDIDO";
+                    currentData.respuesta = respuestaTexto;
+                    currentData.horaRespuesta = obtenerFechaYHoraActual();
+                }
+            }
+            return currentData;
+        }, (error, committed) => {
+            if (committed) {
+                ocultarModalMensaje();
+                showToast();
+                if(document.body.classList.contains('mode-desktop-active')) {
+                    document.getElementById('inpScanDesk').focus();
+                } else {
+                    document.getElementById('inpScan').focus();
+                }
+            }
+        });
+    }
+
+    function enviarMensajeDesdeAdmin() {
+        if (!esAdmin()) return;
+        const dest = document.getElementById('msgDestinatario').value;
+        const texto = document.getElementById('msgTextoAdmin').value.trim();
+
+        if (!texto) return alert("Ingresa un mensaje.");
+
+        const nuevoMensaje = {
+            emisor: usuarioActivo,
+            destino: dest,
+            mensaje: texto,
+            estado: "PENDIENTE",
+            fechaEnvio: obtenerFechaYHoraActual(),
+            respuesta: "",
+            horaRespuesta: ""
+        };
+
+        rtdb.ref("mensajeria_operativa").push(nuevoMensaje).then(() => {
+            showToast();
+            document.getElementById('msgTextoAdmin').value = "";
+        }).catch(e => alert("Error: " + e.message));
+    }
+
+    function actualizarSelectDestinatariosMensajes() {
+        const select = document.getElementById('msgDestinatario');
+        if (!select) return;
+        select.innerHTML = '<option value="TODOS">📢 ENVIAR A TODOS (MASIVO)</option>';
+        Object.values(usuariosPermitidos).forEach(u => {
+            const opt = document.createElement('option');
+            opt.value = u.nombre.toLowerCase();
+            opt.textContent = `👤 ${u.nombre.toUpperCase()}`;
+            select.appendChild(opt);
+        });
+    }
+
+    function renderizarLogsMensajesAdmin(data) {
+        const container = document.getElementById('adminMessagesLog');
+        if (!container) return;
+
+        if (!data) {
+            container.innerHTML = '<div style="text-align:center; font-size:10px; color:var(--text-muted); padding:10px;">No hay registros de envíos.</div>';
+            return;
+        }
+
+        container.innerHTML = Object.keys(data).reverse().map(k => {
+            let m = data[k];
+            let statusHtml = "";
+            
+            if (m.destino === "TODOS") {
+                let numRespuestas = m.respuestasMasivas ? Object.keys(m.respuestasMasivas).length : 0;
+                let detalleRespuestas = "";
+                if (numRespuestas > 0) {
+                    detalleRespuestas = Object.values(m.respuestasMasivas).map(r => 
+                        `<br>• <b>${r.usuario}</b>: ${r.respuesta}`
+                    ).join('');
+                }
+                statusHtml = `<span style="color:var(--primary)"><b>Masivo (Respuestas: ${numRespuestas})</b>${detalleRespuestas}</span>`;
+            } else {
+                statusHtml = m.estado === "PENDIENTE" 
+                    ? `<span style="color:var(--danger)">⏳ Pendiente</span>`
+                    : `<span style="color:var(--success)">✅ Resp: <b>${m.respuesta}</b> (${m.horaRespuesta})</span>`;
+            }
+
+            return `
+                <div class="msg-log-item">
+                    <div style="display:flex; justify-content:space-between; font-weight:800;">
+                        <span>Para: ${m.destino.toUpperCase()}</span>
+                        <span style="color:var(--text-muted)">${m.fechaEnvio}</span>
+                    </div>
+                    <div style="color:var(--text-main); font-weight:600; margin: 2px 0;">"${m.mensaje}"</div>
+                    <div>Status: ${statusHtml}</div>
+                    <button onclick="eliminarLogMensaje('${k}')" style="align-self: flex-end; background:none; border:none; color:var(--danger); font-size:9px; font-weight:700; cursor:pointer;">[Eliminar Alerta]</button>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function eliminarLogMensaje(key) {
+        if (confirm("¿Retirar alerta?")) {
+            rtdb.ref("mensajeria_operativa/" + key).remove().then(() => showToast());
+        }
+    }
+
+    function toggleTheme() {
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('inv_theme', newTheme);
+    }
+
+    function actualizarIndicadorBase() {
+        const dot = document.getElementById('dbDot');
+        const text = document.getElementById('dbText');
+        if (db.length > 0) {
+            dot.style.background = "var(--success)";
+            text.textContent = `BASE RF: ${db.length}`;
+            text.style.color = "var(--success)";
+        } else {
+            dot.style.background = "var(--danger)";
+            text.textContent = "SIN BASE";
+            text.style.color = "#94a3b8";
+        }
+    }
+
+    document.getElementById('excelFile').onchange = (e) => {
+        if (!usuarioActivo) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            const data = new Uint8Array(evt.target.result);
+            const wb = XLSX.read(data, {type: 'array'});
+            const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            rtdb.ref("inventario_base").set(json)
+                .then(() => alert("Base general actualizada"))
+                .catch(err => alert("Error: " + err.message));
+        };
+        reader.readAsArrayBuffer(e.target.files[0]);
+    };
+
+    function borrarBase() {
+        if (confirm("¿Eliminar base?")) {
+            rtdb.ref("inventario_base").remove();
+        }
+    }
+
+    function limpiarTexto(t) { return t ? t.toString().trim().toUpperCase().replace(/[^A-Z0-9]/g, '') : ""; }
+    function limpiarCodigo(codigo) { return codigo.trim().replace(/\s+/g, '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase(); }
+
+    function buscarColumna(fila, palabras) {
+        const key = Object.keys(fila).find(k => {
+            const kClean = limpiarTexto(k);
+            return palabras.some(p => kClean.includes(p));
+        });
+        return key ? fila[key] : null;
+    }
+
+    function procesarEscaneoDesk() {
+        const inpDesk = document.getElementById('inpScanDesk');
+        const val = inpDesk.value;
+        document.getElementById('inpScan').value = val; 
+        procesarEscaneo();
+        inpDesk.value = "";
+        inpDesk.focus();
+    }
+
+    function abrirModalReimprimir(registro) {
+        guiaAReimprimir = registro;
+        document.getElementById('txtReimprimirGuia').textContent = registro.guia;
+        document.getElementById('modalReimprimir').style.display = 'flex';
+        playBeep(200);
+    }
+
+    function cerrarModalReimprimir() {
+        document.getElementById('modalReimprimir').style.display = 'none';
+        guiaAReimprimir = null;
+        if(document.body.classList.contains('mode-desktop-active')) {
+            document.getElementById('inpScanDesk').focus();
+        } else {
+            document.getElementById('inpScan').focus();
+        }
+    }
+
+    function ejecutarReimpresion() {
+        if(guiaAReimprimir) {
+            ejecutarImpresionFisicaEtiqueta(guiaAReimprimir.dia, guiaAReimprimir.guia, guiaAReimprimir.ruta, guiaAReimprimir.sec);
+            showToast();
+        }
+        cerrarModalReimprimir();
+    }
+
+    function procesarEscaneo() {
+        const inp = document.getElementById('inpScan');
+        const valOriginal = inp.value;
+        if (!valOriginal.trim()) { inp.value = ''; inp.focus(); return; }
+        
+        if (!validarRastreo(valOriginal)) { 
+            mostrarModalRastreoIncorrecto(); 
+            inp.value = ''; inp.focus(); 
+            return; 
+        }
+
+        const val = limpiarCodigo(valOriginal);
+        const forzarActivo = document.getElementById('chkModoForzar').checked;
+
+        if (modoDoffaActivo) {
+            if (val.startsWith("PL")) {
+                const encontradoPL = db.find(i => {
+                    const guiaBase = buscarColumna(i, ["GUIA", "SEGUIMIENTO", "TRACKING"]);
+                    return limpiarTexto(guiaBase) === val;
+                });
+
+                const infoPL = {
+                    dia: encontradoPL ? buscarColumna(encontradoPL, ["DIA"]) : null,
+                    ruta: encontradoPL ? buscarColumna(encontradoPL, ["RUTA"]) : null,
+                    sec: encontradoPL ? buscarColumna(encontradoPL, ["SECUENCIA", "SEC"]) : null
+                };
+
+                document.getElementById('dispDia').textContent = infoPL.dia || "SIN PROG.";
+                document.getElementById('dispRuta').textContent = infoPL.ruta || "SIN PROG.";
+                document.getElementById('dispSec').textContent = infoPL.sec || "S/S";
+                document.getElementById('dispLast').textContent = val;
+
+                document.getElementById('dispDiaDesk').textContent = infoPL.dia || "SIN PROG.";
+                document.getElementById('dispRutaDesk').textContent = infoPL.ruta || "SIN PROG.";
+                document.getElementById('dispSecDesk').textContent = infoPL.sec || "S/S";
+                document.getElementById('dispLastDesk').textContent = val;
+
+                const t = document.getElementById('toast');
+                t.textContent = "👁️ VISUALIZADO (PL)";
+                t.style.background = "var(--doffa-color)";
+                t.style.display = "block";
+                setTimeout(() => { t.style.display = "none"; t.textContent = "ÉXITO ✓"; t.style.background = "#10b981"; }, 1500);
+                
+                inp.value = ''; inp.focus();
+                return;
+            }
+
+            const encontradoDoffa = db.find(i => {
+                const guiaBase = buscarColumna(i, ["GUIA", "SEGUIMIENTO", "TRACKING"]);
+                return limpiarTexto(guiaBase) === val;
+            });
+
+            let tieneDoffa = false;
+            if (encontradoDoffa) {
+                tieneDoffa = Object.values(encontradoDoffa).some(v => String(v).toLowerCase().includes("doffa"));
+            }
+
+            if (tieneDoffa) {
+                const infoDoffa = {
+                    dia: encontradoDoffa ? buscarColumna(encontradoDoffa, ["DIA"]) : null,
+                    ruta: encontradoDoffa ? buscarColumna(encontradoDoffa, ["RUTA"]) : null,
+                    sec: encontradoDoffa ? buscarColumna(encontradoDoffa, ["SECUENCIA", "SEC"]) : null
+                };
+
+                document.getElementById('dispDia').textContent = infoDoffa.dia || "SIN PROG.";
+                document.getElementById('dispRuta').textContent = infoDoffa.ruta || "SIN PROG.";
+                document.getElementById('dispSec').textContent = infoDoffa.sec || "S/S";
+                document.getElementById('dispLast').textContent = val;
+
+                document.getElementById('dispDiaDesk').textContent = infoDoffa.dia || "SIN PROG.";
+                document.getElementById('dispRutaDesk').textContent = infoDoffa.ruta || "SIN PROG.";
+                document.getElementById('dispSecDesk').textContent = infoDoffa.sec || "S/S";
+                document.getElementById('dispLastDesk').textContent = val;
+
+                // Chequeo de duplicado usando JORNADA LOGICA
+                const jornadaActual = obtenerJornadaLogica(new Date());
+                const existenteReal = scans.find(s => s.guia === val && !(s.cat && s.cat.startsWith("IMPRESO")) && s.hora && obtenerJornadaLogica(parsearHoraAObj(s.hora)) === jornadaActual);
+
+                if (existenteReal) {
+                    abrirModalDup(existenteReal, infoDoffa);
+                    playBeep(200);
+                } else {
+                    abrirModalDoffa(val, infoDoffa);
+                }
+
+                inp.value = '';
+                return; 
+            }
+        }
+
+        if (modoImpresionActivo) {
+            const jornadaActual = obtenerJornadaLogica(new Date());
+            
+            // Chequeo de duplicado usando JORNADA LOGICA
+            const existenteReal = scans.find(s => s.guia === val && s.cat && s.cat.startsWith("IMPRESO") && s.hora && obtenerJornadaLogica(parsearHoraAObj(s.hora)) === jornadaActual);
+            const coincidenciaRutaBase = baseDatosRutaNube.find(b => b.seguimiento === val);
+
+            if (existenteReal) {
+                inp.value = '';
+                if (coincidenciaRutaBase || forzarActivo) {
+                    abrirModalReimprimir(existenteReal);
+                } else {
+                    abrirModalDup(existenteReal, { dia: existenteReal.dia, ruta: existenteReal.ruta, sec: existenteReal.sec });
+                }
+                return;
+            }
+
+            if (coincidenciaRutaBase || forzarActivo) {
+                const registroValido = {
+                    guia: val,
+                    dia: coincidenciaRutaBase ? coincidenciaRutaBase.dia : "S/P",
+                    ruta: coincidenciaRutaBase ? coincidenciaRutaBase.ruta : "FORZADO",
+                    sec: coincidenciaRutaBase ? coincidenciaRutaBase.secuencia : "S/S",
+                    bul: parseInt(document.getElementById('inpBultos').value) || 1,
+                    ubic: document.getElementById('inpUbic').value.toUpperCase() || "-",
+                    zona: document.getElementById('inpZona').value.toUpperCase() || "-",
+                    cat: "IMPRESO COLD",
+                    hora: obtenerFechaYHoraActual(),
+                    forzado: forzarActivo || !coincidenciaRutaBase,
+                    usuario: usuarioActivo
+                };
+
+                rtdb.ref("escaneos_compartidos").push(registroValido).then(() => {
+                    emitirSonidoCoincidenciaRuta();
+                    ejecutarImpresionFisicaEtiqueta(registroValido.dia, registroValido.guia, registroValido.ruta, registroValido.sec);
+                    
+                    contadorEtiquetasOperarioSesion++;
+                    document.getElementById('cantEtiquetasOperario').textContent = contadorEtiquetasOperarioSesion;
+                    
+                    showToast();
+                    inp.value = ""; inp.focus();
+                });
+            } else {
+                const registroSinProg = {
+                    guia: val,
+                    dia: "SIN PROGRAMACIÓN",
+                    ruta: "SIN PROGRAMACIÓN",
+                    sec: "S/S",
+                    bul: parseInt(document.getElementById('inpBultos').value) || 1,
+                    ubic: document.getElementById('inpUbic').value.toUpperCase() || "-",
+                    zona: document.getElementById('inpZona').value.toUpperCase() || "-",
+                    cat: "IMPRESO (SIN PROG)",
+                    hora: obtenerFechaYHoraActual(),
+                    forzado: true,
+                    usuario: usuarioActivo
+                };
+
+                rtdb.ref("escaneos_compartidos").push(registroSinProg).then(() => {
+                    mostrarModalSinProg(val);
+                    inp.value = "";
+                });
+            }
+            return; 
+        }
+
+        if (modoValidarRutaActivo) {
+            const rutaActualTarget = document.getElementById('inpUbic').value.toUpperCase().trim();
+            const zonaActivaTarget = document.getElementById('inpZona').value.toUpperCase().trim() || 'SIN ZONA';
+
+            if (!rutaActualTarget) {
+                alert('Debe indicar la Ruta en la casilla "Ubicación"');
+                inp.value = ''; inp.focus();
+                return;
+            }
+
+            const jornadaActual = obtenerJornadaLogica(new Date());
+
+            // 1. Chequeo de duplicado de folio usando JORNADA LOGICA
+            const idxDup = scans.findIndex(e => e.guia === val && !(e.cat && e.cat.startsWith("IMPRESO")) && e.hora && obtenerJornadaLogica(parsearHoraAObj(e.hora)) === jornadaActual);
+            
+            if(idxDup !== -1) {
+                inp.value = '';
+                abrirModalDup(scans[idxDup], { dia: scans[idxDup].dia, ruta: scans[idxDup].ruta, sec: scans[idxDup].sec });
+                return;
+            }
+
+            const coincidenciaLocal = baseDatosRutaNube.find(b => b.seguimiento === val);
+            const rutaDelPaquete = coincidenciaLocal ? coincidenciaLocal.ruta : "FORZADO";
+
+            // 2. Chequeo de ubicación ocupada (Rutas físicas base)
+            const ubicacionOcupada = scans.find(e => {
+                if (!e.ubic || !e.ruta) return false;
+                let uDB = String(e.ubic).toUpperCase().trim();
+                let rDB = String(e.ruta).toUpperCase().trim();
+                let esImpreso = e.cat && String(e.cat).toUpperCase().startsWith("IMPRESO");
+                
+                return uDB === rutaActualTarget && 
+                       rDB !== rutaDelPaquete && 
+                       !esImpreso && 
+                       e.hora && obtenerJornadaLogica(parsearHoraAObj(e.hora)) === jornadaActual;
+            });
+
+            if (ubicacionOcupada && !forzarActivo) {
+                mostrarModalRutaAlert('error', '❌ UBICACIÓN OCUPADA', `La ubicación <b>${rutaActualTarget}</b> ya está siendo utilizada hoy por la ruta <b>${ubicacionOcupada.ruta}</b>. No puedes mezclar rutas físicas. Activa FORZAR si es necesario.`, 5000);
+                inp.value = ''; inp.focus();
+                return;
+            }
+
+            // 3. REGLA: Validar que exista en la base
+            if (!coincidenciaLocal && !forzarActivo) {
+                mostrarModalRutaAlert('error', '❌ NO REGISTRADO', `El folio <b>${val}</b> no está mapeado en la base de datos de rutas.`, 4000);
+                inp.value = ''; inp.focus();
+                return;
+            }
+
+            // 4. REGLA MANTENIDA: Modal de alerta si el seguimiento NO pertenece a la ruta escaneada
+            if (coincidenciaLocal && coincidenciaLocal.ruta !== rutaActualTarget && !forzarActivo) {
+                let detalleHtml = `
+                    El folio ingresado no pertenece a la ruta activa.
+                    <div class="alert-details">
+                        <div><b>Ruta Asignada:</b> <span>🚚 ${coincidenciaLocal.ruta}</span></div>
+                        <div><b>Día Asignado:</b> <span>📅 ${coincidenciaLocal.dia}</span></div>
+                        <div><b>Secuencia:</b> <span>🔢 ${coincidenciaLocal.secuencia}</span></div>
+                    </div>
+                `;
+                mostrarModalRutaAlert('warning', '⚠️ RUTA INCORRECTA', detalleHtml, 4000);
+                inp.value = ''; inp.focus();
+                return;
+            }
+
+            // Si pasa todas las validaciones, se registra con normalidad
+            const nuevoRegistroRuta = {
+                guia: val,
+                dia: coincidenciaLocal ? coincidenciaLocal.dia : "S/P",
+                ruta: coincidenciaLocal ? coincidenciaLocal.ruta : "FORZADO",
+                sec: coincidenciaLocal ? coincidenciaLocal.secuencia : "S/S",
+                bul: parseInt(document.getElementById('inpBultos').value) || 1,
+                ubic: rutaActualTarget,
+                zona: zonaActivaTarget,
+                cat: document.getElementById('inpCat').value.toUpperCase() || "-",
+                hora: obtenerFechaYHoraActual(),
+                forzado: forzarActivo || (!coincidenciaLocal) || (coincidenciaLocal.ruta !== rutaActualTarget),
+                usuario: usuarioActivo
+            };
+
+            document.getElementById('dispDia').textContent = nuevoRegistroRuta.dia;
+            document.getElementById('dispRuta').textContent = nuevoRegistroRuta.ruta;
+            document.getElementById('dispSec').textContent = nuevoRegistroRuta.sec;
+            document.getElementById('dispLast').textContent = val;
+
+            document.getElementById('dispDiaDesk').textContent = nuevoRegistroRuta.dia;
+            document.getElementById('dispRutaDesk').textContent = nuevoRegistroRuta.ruta;
+            document.getElementById('dispSecDesk').textContent = nuevoRegistroRuta.sec;
+            document.getElementById('dispLastDesk').textContent = val;
+
+            rtdb.ref("escaneos_compartidos").push(nuevoRegistroRuta).then(() => {
+                emitirSonidoCoincidenciaRuta(); 
+                mostrarModalRutaAlert('success', '✅ REGISTRADO', `Folio <b>${val}</b> verificado en ruta.`, 1500);
+                inp.value = ""; inp.focus();
+            });
+
+            return; 
+        }
+
+        const encontrado = db.find(i => {
+            const guiaBase = buscarColumna(i, ["GUIA", "SEGUIMIENTO", "TRACKING"]);
+            return limpiarTexto(guiaBase) === val;
+        });
+
+        const info = {
+            dia: encontrado ? buscarColumna(encontrado, ["DIA"]) : null,
+            ruta: encontrado ? buscarColumna(encontrado, ["RUTA"]) : null,
+            sec: encontrado ? buscarColumna(encontrado, ["SECUENCIA", "SEC"]) : null
+        };
+
+        document.getElementById('dispDia').textContent = info.dia || "SIN PROG.";
+        document.getElementById('dispRuta').textContent = info.ruta || "SIN PROG.";
+        document.getElementById('dispSec').textContent = info.sec || "S/S";
+        document.getElementById('dispLast').textContent = val;
+
+        document.getElementById('dispDiaDesk').textContent = info.dia || "SIN PROG.";
+        document.getElementById('dispRutaDesk').textContent = info.ruta || "SIN PROG.";
+        document.getElementById('dispSecDesk').textContent = info.sec || "S/S";
+        document.getElementById('dispLastDesk').textContent = val;
+
+        intentarRegistrar(val, info);
+    }
+
+    function ejecutarImpresionFisicaEtiqueta(dia, seguimiento, ruta, secuencia) {
+        const fechaHoraCompleta = new Date().toLocaleString();
+        
+        const iframeAnterior = document.getElementById('iframePrintFisico');
+        if (iframeAnterior) {
+            document.body.removeChild(iframeAnterior);
+        }
+
+        const iframeImpresion = document.createElement('iframe');
+        iframeImpresion.id = 'iframePrintFisico';
+        iframeImpresion.style.position = 'absolute';
+        iframeImpresion.style.top = '-9999px';
+        iframeImpresion.style.left = '-9999px';
+        document.body.appendChild(iframeImpresion);
+
+        const docIframe = iframeImpresion.contentWindow.document;
+
+        let textoDiaLimpio = dia || "S/D";
+        let tamanoDia = textoDiaLimpio.length > 7 ? "14vw" : "20vw";
+
+        docIframe.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                    @page { size: auto; margin: 0; }
+                    html, body { margin: 0; padding: 0; width: 100vw; height: 100vh; background: #fff; color: #000; font-family: 'Arial', sans-serif;}
+                    .etiqueta-liquida { width: 100%; height: 100%; box-sizing: border-box; display: flex; flex-direction: column; align-items: center; padding: 2vw; overflow: hidden; }
+                    
+                    .bloque-top { width: 100%; text-align: center; border-bottom: 2px solid #000; padding: 1vh 0; white-space: nowrap; }
+                    .texto-dia { font-size: ${tamanoDia}; font-weight: 900; text-transform: uppercase; letter-spacing: -1px; }
+                    
+                    .bloque-mid { width: 100%; display: flex; justify-content: space-between; align-items: center; padding: 2vh 0; border-bottom: 2px solid #000; }
+                    .texto-secuencia { font-size: 8vw; font-weight: 900; }
+                    .bloque-ruta { font-size: 10vw; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60vw; text-align: right;}
+                    
+                    .qr-flex-box { flex: 1; display: flex; justify-content: center; align-items: center; width: 100%; margin: 1vh 0; }
+                    #canvasQrPrint { width: 40vw; height: 40vw; }
+                    
+                    .bloque-inferior { width: 100%; border-top: 2px dashed #000; padding-top: 1vh; text-align: center; }
+                    .texto-tracking { font-size: 6vw; font-weight: bold; font-family: monospace; }
+                    .texto-fecha { font-size: 3vw; font-style: italic; margin-top: 0.5vh; }
+                </style>
+            </head>
+            <body>
+                <div class="etiqueta-liquida">
+                    <div class="bloque-top">
+                        <span class="texto-dia">${textoDiaLimpio}</span>
+                    </div>
+                    
+                    <div class="bloque-mid">
+                        <span class="texto-secuencia">SEC: ${secuencia || "S/S"}</span>
+                        <span class="bloque-ruta">${ruta}</span>
+                    </div>
+                    
+                    <div class="qr-flex-box">
+                        <canvas id="canvasQrPrint"></canvas>
+                    </div>
+                    
+                    <div class="bloque-inferior">
+                        <div class="texto-tracking">${seguimiento}</div>
+                        <div class="texto-fecha">${fechaHoraCompleta}</div>
+                    </div>
+                </div>
+
+                <scr` + `ipt src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></scr` + `ipt>
+                <scr` + `ipt>
+                    window.onload = function() {
+                        new QRious({
+                            element: document.getElementById('canvasQrPrint'),
+                            value: "${seguimiento}",
+                            size: 300,
+                            level: 'M'
+                        });
+                        setTimeout(() => { window.print(); }, 500);
+                    };
+                </scr` + `ipt>
+            </body>
+            </html>
+        `);
+        docIframe.close();
+
+        iframeImpresion.contentWindow.onafterprint = function() {
+            if(document.body.classList.contains('mode-desktop-active')) {
+                document.getElementById('inpScanDesk').focus();
+            } else {
+                document.getElementById('inpScan').focus();
+            }
+        };
+
+        setTimeout(() => {
+            if(document.body.classList.contains('mode-desktop-active')) {
+                document.getElementById('inpScanDesk').focus();
+            } else {
+                document.getElementById('inpScan').focus();
+            }
+        }, 2500);
+    }
+
+    function validarRastreo(codigoOriginal) {
+        const code = limpiarCodigo(codigoOriginal);
+        if (!code) return false;
+        
+        if (document.getElementById('chkModoForzar').checked || modoValidarRutaActivo || modoImpresionActivo) return true;
+        
+        if (modoDoffaActivo && code.startsWith("PL")) return true;
+
+        return Object.values(reglasDinamicas).some(reglaObj => {
+            try {
+                const exp = reglaObj.expresion;
+                if (exp.startsWith('^') || exp.includes('\\d') || exp.includes('$')) {
+                    return new RegExp(exp, 'i').test(code);
+                } else {
+                    return code.includes(exp.toUpperCase());
+                }
+            } catch(e) { return false; }
+        });
+    }
+
+    function inicializarReglasNativas() {
+        const iniciales = [
+            "240\\d{15}$", "EP", "^V\\d*PLZV\\d*$", "^MKP\\d{15}$", "^655\\d{15}$", "^7\\d{17}$",
+            "^20\\d{14}$", "^12\\d{10}$", "^10\\d{14}$", "(DEV|RET|REC)$", "^9\\d{9}$", "^16\\d{13}$",
+            "^00\\d{18}$", "^162\\d{15}$", "^162\\d{12}$", "RGD", "^6.*RET$", "^6.*REC$",
+            "^655.*DEV$", "UN", "MU", "^000\\d{17}$", "ORROHOME", "WSP", "^9\\d{17}$",
+            "^S\\d{7}$", "PORT", "^MYP\\d{15}$", "^60\\d{16}$", "^30\\d{16}$", "^20\\d{16}$",
+            "^GERM\\d{4}$", "^05\\d{18}$", "^32\\d{18}$", "^652\\d{18}$", "^MMST\\d{15}$",
+            "CREDITIENDA", "CLAR", "^25\\d{9}$", "^ER\\d{9}$", "^OFC\\d{9}$", "^FRFM\\d{14}$"
+        ];
+        iniciales.forEach(regla => { rtdb.ref("reglas_tracking").push({ expresion: regla }); });
+    }
+
+    function mostrarModalRastreoIncorrecto() {
+        alert("🚫 CÓDIGO DE GUÍA INVÁLIDO");
+    }
+
+    function obtenerFechaYHoraActual() {
+        const ahora = new Date();
+        const d = String(ahora.getDate()).padStart(2, '0');
+        const mes = String(ahora.getMonth() + 1).padStart(2, '0');
+        const anio = ahora.getFullYear();
+        let horas = ahora.getHours();
+        const minutes = String(ahora.getMinutes()).padStart(2, '0');
+        const ampm = horas >= 12 ? 'PM' : 'AM';
+        horas = horas % 12; horas = horas ? horas : 12;
+        return `${d}/${mes}/${anio} - ${String(horas).padStart(2, '0')}:${minutes} ${ampm}`;
+    }
+
+    document.getElementById('inpScan').onkeypress = (e) => { if (e.key === 'Enter') procesarEscaneo(); };
+
+    function intentarRegistrar(guia, info) {
+        const jornadaActual = obtenerJornadaLogica(new Date());
+
+        // Chequeo de duplicado usando JORNADA LOGICA
+        const existenteReal = scans.find(s => s.guia === guia && !(s.cat && s.cat.startsWith("IMPRESO")) && s.hora && obtenerJornadaLogica(parsearHoraAObj(s.hora)) === jornadaActual);
+        
+        if (existenteReal) {
+            abrirModalDup(existenteReal, info);
+            playBeep(200);
+        } else {
+            const nuevo = {
+                guia: guia,
+                dia: info.dia || "SIN PROG.",
+                ruta: info.ruta || "SIN PROG.",
+                sec: info.sec || "S/S",
+                bul: parseInt(document.getElementById('inpBultos').value) || 1,
+                ubic: document.getElementById('inpUbic').value.toUpperCase() || "-",
+                zona: document.getElementById('inpZona').value.toUpperCase() || "-",
+                cat: document.getElementById('inpCat').value.toUpperCase() || "-", 
+                hora: obtenerFechaYHoraActual(),
+                forzado: document.getElementById('chkModoForzar').checked,
+                usuario: usuarioActivo
+            };
+
+            rtdb.ref("escaneos_compartidos").push(nuevo).then(() => {
+                playBeep(800); showToast();
+                document.getElementById('inpScan').value = "";
+                if(document.body.classList.contains('mode-desktop-active')) {
+                    document.getElementById('inpScanDesk').focus();
+                } else {
+                    document.getElementById('inpScan').focus();
+                }
+            });
+        }
+    }
+
+    function actualizarListaTarjetas() {
+        const contenedor = document.getElementById('contenedorTarjetas');
+        const contenedorDesk = document.getElementById('contenedorTarjetasDesk');
+        const tarjetasHtml = construirHtmlTarjetas(scans, esAdmin());
+        
+        if (contenedor) {
+            contenedor.innerHTML = tarjetasHtml;
+        }
+        if (contenedorDesk) {
+            contenedorDesk.innerHTML = tarjetasHtml;
+        }
+        
+        document.getElementById('tTotal').textContent = scans.length;
+    }
+
+    function abrirModalConsulta() {
+        if (!esAdmin()) {
+            let datosUsuario = Object.values(usuariosPermitidos).find(u => u.nombre.toLowerCase() === usuarioActivo.toLowerCase());
+            if (!datosUsuario || !datosUsuario.permisos || !datosUsuario.permisos.consultar) return;
+        }
+        document.getElementById('inpBusquedaAdmin').value = "";
+        document.getElementById('lblQueryGuias').textContent = "0";
+        document.getElementById('lblQueryBultos').textContent = "0";
+        document.getElementById('btnEliminarTodoFiltrado').style.display = "none";
+        document.getElementById('contenedorResultadosConsulta').innerHTML = "";
+        document.getElementById('modalConsultaAdmin').style.display = 'flex';
+        document.getElementById('inpBusquedaAdmin').focus();
+        registrosFiltradosConsultaGlobal = [];
+    }
+
+    function cerrarModalConsulta() {
+        document.getElementById('modalConsultaAdmin').style.display = 'none';
+        if(document.body.classList.contains('mode-desktop-active')) {
+            document.getElementById('inpScanDesk').focus();
+        } else {
+            document.getElementById('inpScan').focus();
+        }
+    }
+
+    function ejecutarFiltroAdmin() {
+        const q = document.getElementById('inpBusquedaAdmin').value.trim().toUpperCase();
+        const contenedor = document.getElementById('contenedorResultadosConsulta');
+        const btnEliminarTodo = document.getElementById('btnEliminarTodoFiltrado');
+        
+        if (!q) {
+            document.getElementById('lblQueryGuias').textContent = "0";
+            document.getElementById('lblQueryBultos').textContent = "0";
+            btnEliminarTodo.style.display = "none";
+            contenedor.innerHTML = "";
+            registrosFiltradosConsultaGlobal = [];
+            return;
+        }
+
+        registrosFiltradosConsultaGlobal = scans.filter(s => 
+            (s.guia && s.guia.toUpperCase().includes(q)) || 
+            (s.ubic && s.ubic.toUpperCase().includes(q)) ||
+            (s.usuario && s.usuario.toUpperCase().includes(q))
+        );
+
+        const totalGuias = registrosFiltradosConsultaGlobal.length;
+        const totalBultos = registrosFiltradosConsultaGlobal.reduce((sum, item) => sum + (parseInt(item.bul) || 0), 0);
+
+        document.getElementById('lblQueryGuias').textContent = totalGuias;
+        document.getElementById('lblQueryBultos').textContent = totalBultos;
+
+        if (totalGuias > 0 && esAdmin()) {
+            btnEliminarTodo.style.display = "block";
+            btnEliminarTodo.textContent = `⚠️ ELIMINAR LOS ${totalGuias} REGISTROS FILTRADOS`;
+        } else {
+            btnEliminarTodo.style.display = "none";
+        }
+
+        contenedor.innerHTML = construirHtmlTarjetas(registrosFiltradosConsultaGlobal, true);
+    }
+
+    function eliminarFilaConsulta(key) {
+        if (!esAdmin()) return alert("Solo admin.");
+        if (confirm("¿Deseas eliminar este escaneo?")) {
+            rtdb.ref("escaneos_compartidos/" + key).remove().then(() => {
+                showToast();
+                if(document.getElementById('modalConsultaAdmin').style.display === 'flex') {
+                    ejecutarFiltroAdmin();
+                }
+            });
+        }
+    }
+
+    function eliminarTodoFiltrado() {
+        if (!esAdmin()) return;
+        if (registrosFiltradosConsultaGlobal.length === 0) return;
+
+        const count = registrosFiltradosConsultaGlobal.length;
+        if (confirm(`🚨 ¿Purgar los ${count} registros?`)) {
+            let promesas = registrosFiltradosConsultaGlobal.map(item => {
+                return rtdb.ref("escaneos_compartidos/" + item.key).remove();
+            });
+
+            Promise.all(promesas).then(() => {
+                alert(`Purgados ${count} registros.`);
+                document.getElementById('inpBusquedaAdmin').value = "";
+                ejecutarFiltroAdmin();
+            }).catch(err => alert("Error: " + err.message));
+        }
+    }
+
+    function abrirModalAvanceAdmin() {
+        if (!esAdmin()) {
+            let datosUsuario = Object.values(usuariosPermitidos).find(u => u.nombre.toLowerCase() === usuarioActivo.toLowerCase());
+            if (!datosUsuario || !datosUsuario.permisos || !datosUsuario.permisos.avance) return;
+        }
+        document.getElementById('modalAvanceAdmin').style.display = 'flex';
+        calcularAvanceUsuarios();
+    }
+
+    function cerrarModalAvanceAdmin() {
+        document.getElementById('modalAvanceAdmin').style.display = 'none';
+        if(document.body.classList.contains('mode-desktop-active')) {
+            document.getElementById('inpScanDesk').focus();
+        } else {
+            document.getElementById('inpScan').focus();
+        }
+    }
+
+    function calcularAvanceUsuarios() {
+        const contenedor = document.getElementById('contenedorListaAvance');
+
+        if (scans.length === 0) {
+            const vacioText = `<div style="text-align:center; font-size:12px; color:var(--text-muted); margin-top:20px;">No se registran escaneos.</div>`;
+            if (contenedor) contenedor.innerHTML = vacioText;
+            
+            document.getElementById('dashModoImp').textContent = "0";
+            document.getElementById('dashModoRuta').textContent = "0";
+            document.getElementById('dashModoDoffa').textContent = "0";
+            document.getElementById('dashModoPrin').textContent = "0";
+            document.getElementById('dashModoForz').textContent = "0";
+            
+            if(rankingChartInstance) {
+                rankingChartInstance.data.labels = [];
+                rankingChartInstance.data.datasets[0].data = [];
+                rankingChartInstance.update();
+            }
+            return;
+        }
+
+        let metricas = {};
+        let countImp = 0, countRuta = 0, countDoffa = 0, countPrin = 0, countForz = 0;
+        
+        const jornadaActual = obtenerJornadaLogica(new Date());
+
+        scans.forEach(s => {
+            // Filtrar SOLO por la JORNADA LOGICA actual, no por día calendario
+            if (!s.hora || obtenerJornadaLogica(parsearHoraAObj(s.hora)) !== jornadaActual) return;
+
+            let op = s.usuario || "Desconocido";
+            if (!metricas[op]) {
+                metricas[op] = { validas: 0, forzadas: 0, bultos: 0, score: 0 };
+            }
+
+            let esImpreso = s.cat && s.cat.startsWith("IMPRESO");
+            let esForzado = s.forzado || s.cat === "SIN PROGRAMACIÓN" || s.ruta === "SIN PROG.";
+            let esDoffa = s.cat === "DOFFA";
+            let esRuta = s.ruta && s.ruta !== "SIN PROG." && s.ruta !== "FORZADO" && s.ruta !== "SIN PROGRAMACIÓN";
+
+            if (esImpreso) {
+                countImp++;
+            } else if (esDoffa) {
+                countDoffa++;
+            } else if (esForzado) {
+                countForz++;
+            } else if (esRuta) {
+                countRuta++;
+            } else {
+                countPrin++; 
+            }
+
+            metricas[op].bultos += (parseInt(s.bul) || 0);
+            metricas[op].score++; 
+            
+            if (!esForzado && !esImpreso) {
+                metricas[op].validas++;
+            } else {
+                metricas[op].forzadas++;
+            }
+        });
+
+        if(document.getElementById('dashModoImp')) {
+            document.getElementById('dashModoImp').textContent = countImp;
+            document.getElementById('dashModoRuta').textContent = countRuta;
+            document.getElementById('dashModoDoffa').textContent = countDoffa;
+            document.getElementById('dashModoPrin').textContent = countPrin;
+            document.getElementById('dashModoForz').textContent = countForz;
+        }
+
+        let opsArray = Object.keys(metricas).map(op => {
+            return { nombre: op, score: metricas[op].score };
+        });
+        
+        opsArray.sort((a,b) => b.score - a.score);
+
+        let labelsChart = opsArray.map(o => o.nombre);
+        let dataChart = opsArray.map(o => o.score);
+
+        const canvasObj = document.getElementById('rankingChart');
+        if (canvasObj) {
+            if (rankingChartInstance) {
+                rankingChartInstance.data.labels = labelsChart;
+                rankingChartInstance.data.datasets[0].data = dataChart;
+                rankingChartInstance.update();
+            } else {
+                const ctx = canvasObj.getContext('2d');
+                rankingChartInstance = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labelsChart,
+                        datasets: [{
+                            label: 'Total Escaneos (Turno Actual)',
+                            data: dataChart,
+                            backgroundColor: '#ec4899',
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: 'y', 
+                        plugins: { legend: { display: false } },
+                        scales: { x: { beginAtZero: true } }
+                    }
+                });
+            }
+        }
+
+        let htmlContent = Object.keys(metricas).map(operario => {
+            let item = metricas[operario];
+            return `
+                <div class="user-stat-card">
+                    <div class="user-stat-header">
+                        <span class="user-stat-name">👤 ${operario}</span>
+                        <span style="font-size:11px; font-weight:800; color:var(--text-muted);">Total: ${item.score}</span>
+                    </div>
+                    <div class="user-stat-grid">
+                        <div class="user-stat-box" style="border-left: 3px solid var(--success);">
+                            <div class="user-stat-label">Válidas</div>
+                            <div class="user-stat-val" style="color:var(--success);">${item.validas}</div>
+                        </div>
+                        <div class="user-stat-box" style="border-left: 3px solid var(--danger);">
+                            <div class="user-stat-label">Forz/Otros</div>
+                            <div class="user-stat-val" style="color:var(--danger);">${item.forzadas}</div>
+                        </div>
+                        <div class="user-stat-box" style="border-left: 3px solid var(--primary);">
+                            <div class="user-stat-label">Bultos Tot.</div>
+                            <div class="user-stat-val" style="color:var(--primary);">${item.bultos}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        if(contenedor) contenedor.innerHTML = htmlContent;
+    }
+
+    function abrirModalBaseAdmin() {
+        if (!esAdmin()) {
+            let datosUsuario = Object.values(usuariosPermitidos).find(u => u.nombre.toLowerCase() === usuarioActivo.toLowerCase());
+            if (!datosUsuario || !datosUsuario.permisos || !datosUsuario.permisos.base) return;
+        }
+        document.getElementById('inpBusquedaBase').value = "";
+        document.getElementById('baseInpGuia').value = "";
+        document.getElementById('baseInpRuta').value = "";
+        document.getElementById('baseInpDia').value = "";
+        document.getElementById('baseInpSec').value = "";
+        document.getElementById('modalBaseAdmin').style.display = 'flex';
+        filtrarBaseAdmin();
+    }
+
+    function cerrarModalBaseAdmin() {
+        document.getElementById('modalBaseAdmin').style.display = 'none';
+        if(document.body.classList.contains('mode-desktop-active')) {
+            document.getElementById('inpScanDesk').focus();
+        } else {
+            document.getElementById('inpScan').focus();
+        }
+    }
+
+    function agregarRegistroBaseManual() {
+        const g = document.getElementById('baseInpGuia').value.trim().toUpperCase();
+        const r = document.getElementById('baseInpRuta').value.trim().toUpperCase();
+        const d = document.getElementById('baseInpDia').value.trim().toUpperCase();
+        const s = document.getElementById('baseInpSec').value.trim().toUpperCase();
+
+        if (!g || !r) return alert("Guía y Ruta son obligatorios.");
+
+        const nuevoItemBase = {
+            "GUIA": g,
+            "RUTA": r,
+            "DIA": d || "SIN PROG.",
+            "SECUENCIA": s || "S/S"
+        };
+
+        rtdb.ref("inventario_base").push(nuevoItemBase).then(() => {
+            showToast();
+            document.getElementById('baseInpGuia').value = "";
+            document.getElementById('baseInpSec').value = "";
+            document.getElementById('baseInpGuia').focus();
+        });
+    }
+
+    function eliminarRegistroBaseIndividual(key) {
+        if (confirm("¿Eliminar guía?")) {
+            rtdb.ref("inventario_base/" + key).remove().then(() => showToast());
+        }
+    }
+
+    function filtrarBaseAdmin() {
+        const q = document.getElementById('inpBusquedaBase').value.trim().toUpperCase();
+        const contenedor = document.getElementById('contenedorListaBase');
+        
+        const itemsAFiltrar = q ? db.filter(i => {
+            const gVal = buscarColumna(i, ["GUIA", "SEGUIMIENTO", "TRACKING"]) || "";
+            const rVal = buscarColumna(i, ["RUTA"]) || "";
+            return gVal.toString().toUpperCase().includes(q) || rVal.toString().toUpperCase().includes(q);
+        }) : db.slice(-40).reverse();
+
+        if (itemsAFiltrar.length === 0) {
+            contenedor.innerHTML = `<div style="text-align:center; font-size:12px; color:var(--text-muted); margin-top:20px;">Sin resultados coincidentes</div>`;
+            return;
+        }
+
+        let puedeBorrarFilaBase = false;
+        if (esAdmin()) {
+            puedeBorrarFilaBase = true;
+        } else {
+            let datosUsuario = Object.values(usuariosPermitidos).find(u => u.nombre.toLowerCase() === usuarioActivo.toLowerCase());
+            if (datosUsuario && datosUsuario.permisos && datosUsuario.permisos.borrar_base) {
+                puedeBorrarFilaBase = true;
+            }
+        }
+
+        contenedor.innerHTML = itemsAFiltrar.map(i => {
+            const guiaVal = buscarColumna(i, ["GUIA", "SEGUIMIENTO", "TRACKING"]) || "S/G";
+            const rutaVal = buscarColumna(i, ["RUTA"]) || "SIN PROG.";
+            const diaVal = buscarColumna(i, ["DIA"]) || "SIN PROG.";
+            const secVal = buscarColumna(i, ["SECUENCIA", "SEC"]) || "S/S";
+            
+            const btnHtml = puedeBorrarFilaBase ? `<button onclick="eliminarRegistroBaseIndividual('${i.key}')" style="background:rgba(239, 68, 68, 0.1); border:1px solid rgba(239,68,68,0.2); color:var(--danger); font-size:10px; padding:3px 6px; border-radius:4px; font-weight:bold; cursor:pointer;">Eliminar</button>` : '';
+
+            return `
+                <div class="history-card" style="border-left-color: #8b5cf6;">
+                    <div class="history-card-top">
+                        <span>📋 ${guiaVal}</span>
+                        <span style="color:#8b5cf6">Sec: ${secVal}</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:4px;">
+                        <div style="font-size:11px; font-weight:700; color:var(--text-muted);">
+                            Ruta: <span style="color:var(--text-main)">${rutaVal}</span> | Día: <span style="color:var(--text-main)">${diaVal}</span>
+                        </div>
+                        ${btnHtml}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function construirHtmlTarjetas(listaData, esConsulta = false) {
+        return listaData.map(s => {
+            let claseForzado = s.forzado ? 'card-forzado' : '';
+            if (s.cat === "SIN PROGRAMACIÓN" || (s.cat && s.cat.startsWith("IMPRESO"))) claseForzado = 'card-sinprog';
+            
+            const tagForzado = (s.cat === "SIN PROGRAMACIÓN" || (s.cat && s.cat.startsWith("IMPRESO"))) ? '⚠️ ' : (s.forzado ? '🔴 ' : '📦 ');
+            const botonEliminarFila = (esAdmin()) ? `<button onclick="eliminarFilaConsulta('${s.key}')" style="background:rgba(239, 68, 68, 0.15); border:1px solid rgba(239, 68, 68, 0.3); color:var(--danger); font-size:10px; padding:3px 8px; border-radius:4px; font-weight:800; cursor:pointer; margin-left:auto;">Eliminar</button>` : '';
+
+            return `
+                <div class="history-card ${claseForzado}">
+                    <div class="history-card-top">
+                        <span>${tagForzado}${s.guia}</span>
+                        <span style="color:var(--primary)">Sec: ${s.sec || "S/S"}</span>
+                    </div>
+                    <div class="history-card-mid">
+                        <div><b>Día</b><br>${s.dia || "S/P"}</div>
+                        <div><b>Ubic.</b><br>${s.ubic || "-"}</div>
+                        <div><b>Zona</b><br>${s.zona || "-"}</div>
+                        <div><b>Cat.</b><br>${s.cat || "-"}</div>
+                        <div><b>Bultos</b><br>${s.bul || 1}</div>
+                        <div style="grid-column: span 3; text-align:right; font-weight:700; color:var(--text-muted)">${s.ruta || "S/P"}</div>
+                    </div>
+                    <div class="history-card-bot">
+                        <span>🕒 ${s.hora}</span>
+                        <div style="display:flex; align-items:center; gap:8px; width:100%; justify-content:flex-end;">
+                            <span style="font-weight:700;">Op: ${s.usuario || "@?"}</span>
+                            ${botonEliminarFila}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function abrirModalRegistros() { 
+        document.getElementById('modalRegistros').style.display = 'flex'; 
+    }
+    
+    function cerrarModalRegistros() { document.getElementById('modalRegistros').style.display = 'none'; if(document.body.classList.contains('mode-desktop-active')) { document.getElementById('inpScanDesk').focus(); } else { document.getElementById('inpScan').focus(); } }
+
+    function abrirModalDup(item, infoContexto) {
+        duplicadoKey = item.key;
+        document.getElementById('modalMsg').textContent = `Escaneado por '${item.usuario || 'Desconocido'}'.`;
+        document.getElementById('lblDupDia').textContent = item.dia || infoContexto.dia || "SIN PROG.";
+        document.getElementById('lblDupSec').textContent = item.sec || infoContexto.sec || "S/S";
+        document.getElementById('lblDupRuta').textContent = item.ruta || infoContexto.ruta || "SIN PROG.";
+        
+        document.getElementById('modBultos').value = item.bul || 1;
+        document.getElementById('modUbic').value = item.ubic || "";
+        document.getElementById('modZona').value = item.zona || "";
+        
+        const selectModalCat = document.getElementById('modCat');
+        const valorCatOriginal = item.cat || "";
+        
+        const opTemporalAnterior = selectModalCat.querySelector('.opt-custom');
+        if (opTemporalAnterior) opTemporalAnterior.remove();
+
+        if (valorCatOriginal !== "" && !opcionesEstandar.includes(valorCatOriginal)) {
+            const nuevaOpt = document.createElement('option');
+            nuevaOpt.value = valorCatOriginal;
+            nuevaOpt.textContent = valorCatOriginal;
+            nuevaOpt.className = 'opt-custom';
+            selectModalCat.insertBefore(nuevaOpt, selectModalCat.lastElementChild);
+        }
+        
+        selectModalCat.value = valorCatOriginal !== "" ? valorCatOriginal : "-";
+        
+        const wrapper = document.getElementById('wrapperEliminarAdmin');
+        wrapper.innerHTML = esAdmin() ? `<button onclick="eliminarRegistro()" style="background:rgba(239,68,68,0.1); color:var(--danger); border:1px solid rgba(239,68,68,0.2); padding:10px; border-radius:8px; font-weight:800; width:100%; font-size:11px; margin-top:4px;">🗑️ ELIMINAR ESCANEO GLOBAL</button>` : '';
+
+        document.getElementById('modalDup').style.display = 'flex';
+    }
+
+    function cerrarModalDup() { document.getElementById('modalDup').style.display = 'none'; document.getElementById('inpScan').value = ""; if(document.body.classList.contains('mode-desktop-active')) { document.getElementById('inpScanDesk').focus(); } else { document.getElementById('inpScan').focus(); } }
+
+    function actualizarRegistro() {
+        if (duplicadoKey) {
+            rtdb.ref("escaneos_compartidos/" + duplicadoKey).update({
+                bul: parseInt(document.getElementById('modBultos').value) || 1,
+                ubic: document.getElementById('modUbic').value.toUpperCase(),
+                zona: document.getElementById('modZona').value.toUpperCase(),
+                cat: document.getElementById('modCat').value.toUpperCase(), 
+                hora: obtenerFechaYHoraActual() + " (Act.)",
+                usuario: usuarioActivo
+            }).then(() => { cerrarModalDup(); showToast(); });
+        }
+    }
+
+    function eliminarRegistro() {
+        if (esAdmin() && confirm("¿Eliminar?")) {
+            rtdb.ref("escaneos_compartidos/" + duplicadoKey).remove().then(() => cerrarModalDup());
+        }
+    }
+
+    function limpiarScans() {
+        if (confirm("¿Purgar todo?")) {
+            rtdb.ref("escaneos_compartidos").remove().then(() => cerrarModalRegistros());
+        }
+    }
+
+    function abrirModalAdmin() { 
+        let datosUsuario = Object.values(usuariosPermitidos).find(u => u.nombre.toLowerCase() === usuarioActivo.toLowerCase());
+        if (!esAdmin() && datosUsuario && !datosUsuario.permisos.panel) return;
+        
+        if(esAdmin() || (datosUsuario && datosUsuario.permisos.panel)) {
+            document.getElementById('modalAdminUsuarios').style.display = 'flex'; 
+        }
+    }
+    
+    function cerrarModalAdmin() { document.getElementById('modalAdminUsuarios').style.display = 'none'; }
+
+    function cambiarTabAdmin(tab) {
+        document.getElementById('tabAdminUsuarios').style.display = tab === 'users' ? 'block' : 'none';
+        document.getElementById('tabAdminRules').style.display = tab === 'rules' ? 'block' : 'none';
+        document.getElementById('tabAdminMessages').style.display = tab === 'messages' ? 'block' : 'none';
+        
+        document.getElementById('tabUsersBtn').className = tab === 'users' ? 'tab-btn active' : 'tab-btn';
+        document.getElementById('tabRulesBtn').className = tab === 'rules' ? 'tab-btn active' : 'tab-btn';
+        document.getElementById('tabMessagesBtn').className = tab === 'messages' ? 'tab-btn active' : 'tab-btn';
+    }
+
+    function agregarOperarioAutorizado() {
+        let inputField = document.getElementById('newOpName');
+        let nombre = inputField.value.trim().toLowerCase();
+        if(!nombre) return;
+        if(!nombre.startsWith('@')) nombre = '@' + nombre;
+        
+        const permisosCapturados = {
+            historial: document.getElementById('p_historial').checked,
+            avance: document.getElementById('p_avance').checked,
+            base: document.getElementById('p_base').checked,
+            consultar: document.getElementById('p_consultar').checked,
+            cargar: document.getElementById('p_cargar').checked,
+            cargar_ruta: document.getElementById('p_cargar_ruta').checked,
+            panel: document.getElementById('p_panel').checked,
+            limpiar_historial: document.getElementById('p_limpiar_historial').checked,
+            borrar_base: document.getElementById('p_borrar_base').checked,
+            auditoria: document.getElementById('p_auditoria').checked
+        };
+
+        rtdb.ref("usuarios_sistema").push({ 
+            nombre: nombre,
+            permisos: permisosCapturados
+        }).then(() => { 
+            inputField.value = ""; 
+            showToast(); 
+        });
+    }
+
+    function borrarUsuarioSistema(key) { if(confirm("¿Dar de baja?")) rtdb.ref("usuarios_sistema/" + key).remove(); }
+
+    function renderizarListaUsuariosAdmin() {
+        const container = document.getElementById('adminUsersList');
+        if(!container) return;
+        let keys = Object.keys(usuariosPermitidos);
+        
+        container.innerHTML = keys.map(k => {
+            const u = usuariosPermitidos[k];
+            return `
+                <div class="admin-user-item">
+                    <div style="display:flex; justify-content:space-between; width:100%; align-items:center;">
+                        <span style="font-size:12px; font-weight:700; color:var(--primary);">👤 ${u.nombre}</span>
+                        <button class="btn-del-user" onclick="borrarUsuarioSistema('${k}')">Baja</button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    function agregarReglaTracking() {
+        const inp = document.getElementById('newRuleText');
+        const expresion = inp.value.trim();
+        if(!expresion) return;
+        rtdb.ref("reglas_tracking").push({ expresion: expresion }).then(() => { inp.value = ""; showToast(); });
+    }
+
+    function eliminarReglaTracking(key) { if(confirm("¿Eliminar?")) rtdb.ref("reglas_tracking/" + key).remove(); }
+
+    function renderizarListaRulesAdmin() {
+        const container = document.getElementById('adminRulesList');
+        if(!container) return;
+        let keys = Object.keys(reglasDinamicas);
+        container.innerHTML = keys.map(k => `
+            <div class="admin-user-item" style="flex-direction:row; justify-content:space-between; align-items:center;">
+                <span style="font-family:monospace; font-size:11px; color:var(--primary); font-weight:700;">${reglasDinamicas[k].expresion}</span>
+                <button class="btn-del-user" onclick="eliminarReglaTracking('${k}')">Eliminar</button>
+            </div>
+        `).join('');
+    }
+
+    function exportar() {
+        if(scans.length === 0) return alert("No hay datos.");
+        const dataExport = scans.map(s => ({
+            "Código Guía": s.guia || "",
+            "Día": s.dia || "SIN PROG.",
+            "Secuencia": s.sec || "S/S",
+            "Ruta": s.ruta || "SIN PROG.",
+            "Bultos": s.bul || 1,
+            "Ubicación": s.ubic || "-",
+            "Zona": s.zona || "-",
+            "Categoría": s.cat || "-", 
+            "Fecha y Hora Captura": s.hora || "",
+            "Operario Log": s.usuario || "Desconocido"
+        }));
+
+        const ws = XLSX.utils.json_to_sheet(dataExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Historial_RF");
+        XLSX.writeFile(wb, `Reporte_RF_${new Date().toLocaleDateString().replace(/\//g, '-')}.xlsx`);
+    }
+
+    function showToast() {
+        const t = document.getElementById('toast');
+        t.style.display = 'block';
+        setTimeout(() => { t.style.display = 'none'; }, 1500);
+    }
+
+    function playBeep(f) {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const o = ctx.createOscillator(); const g = ctx.createGain();
+            o.connect(g); g.connect(ctx.destination); o.frequency.value = f;
+            g.gain.setValueAtTime(0.1, ctx.currentTime); o.start(); o.stop(ctx.currentTime + 0.1);
+        } catch(e) {}
+    }
+
+    function actualizarDashboardKPI() {
+        if (scans.length === 0) return;
+
+        let totalBultos = 0;
+        let validadas = 0;
+        let forzadasSinProg = 0;
+        let conteoOperarios = {};
+        let escaneosPorHora = {};
+        
+        const jornadaActual = obtenerJornadaLogica(new Date());
+
+        scans.forEach(s => {
+            if (s.cat && s.cat.startsWith("IMPRESO")) return;
+            
+            // Filtrar SOLO por la JORNADA LOGICA actual, no por día calendario
+            if (!s.hora || obtenerJornadaLogica(parsearHoraAObj(s.hora)) !== jornadaActual) return;
+
+            totalBultos += (parseInt(s.bul) || 1);
+
+            if (s.forzado || s.cat === "SIN PROGRAMACIÓN" || s.ruta === "SIN PROGRAMACIÓN" || s.dia === "SIN PROG.") {
+                forzadasSinProg++;
+            } else {
+                validadas++;
+            }
+
+            let op = s.usuario || "Desconocido";
+            conteoOperarios[op] = (conteoOperarios[op] || 0) + 1;
+
+            if (s.hora) {
+                let parts = s.hora.split(" - ");
+                if (parts.length > 1) {
+                    let horaM = parts[1].split(":")[0];
+                    let ampm = parts[1].includes("PM") ? "PM" : "AM";
+                    let labelHora = `${horaM} ${ampm}`;
+                    escaneosPorHora[labelHora] = (escaneosPorHora[labelHora] || 0) + 1;
+                }
+            }
+        });
+
+        document.getElementById('kpiTotalBultos').textContent = totalBultos;
+        
+        let topOp = "-";
+        let maxScans = -1;
+        for (let op in conteoOperarios) {
+            if (conteoOperarios[op] > maxScans) {
+                maxScans = conteoOperarios[op];
+                topOp = op;
+            }
+        }
+        document.getElementById('kpiTopOperario').textContent = `${topOp} (${maxScans})`;
+
+        if (donutChartInstance) {
+            donutChartInstance.data.datasets[0].data = [validadas, forzadasSinProg];
+            donutChartInstance.update();
+        } else {
+            const ctxD = document.getElementById('donutChartCalidad').getContext('2d');
+            donutChartInstance = new Chart(ctxD, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Validadas', 'Forzadas/S.P.'],
+                    datasets: [{
+                        data: [validadas, forzadasSinProg],
+                        backgroundColor: ['#10b981', '#ef4444'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } }
+                    }
+                }
+            });
+        }
+
+        let sortedHoras = Object.keys(escaneosPorHora).sort((a, b) => {
+            let parseTime = (str) => {
+                let [h, m] = str.split(" ");
+                h = parseInt(h);
+                if (h === 12) h = 0;
+                if (m === "PM") h += 12;
+                return h;
+            };
+            return parseTime(a) - parseTime(b);
+        });
+
+        let dataBarras = sortedHoras.map(h => escaneosPorHora[h]);
+
+        if (barChartInstance) {
+            barChartInstance.data.labels = sortedHoras;
+            barChartInstance.data.datasets[0].data = dataBarras;
+            barChartInstance.update();
+        } else {
+            const ctxB = document.getElementById('barChartRendimiento').getContext('2d');
+            barChartInstance = new Chart(ctxB, {
+                type: 'bar',
+                data: {
+                    labels: sortedHoras,
+                    datasets: [{
+                        label: 'Escaneos',
+                        data: dataBarras,
+                        backgroundColor: '#4f46e5',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, ticks: { precision: 0, font: {size:10} } },
+                        x: { ticks: { font: {size:10} } }
+                    }
+                }
+            });
+        }
+    }
+
+    function imprimirReporteValidacion(conDetalle = true) {
+        let filtroDia = document.getElementById('filtroAuditDia') ? document.getElementById('filtroAuditDia').value.trim().toUpperCase() : "";
+        let filtroRuta = document.getElementById('filtroAuditRuta') ? document.getElementById('filtroAuditRuta').value.trim().toUpperCase() : "";
+        
+        let escaneosFiltrados = scans.filter(s => {
+            if (s.cat && s.cat.startsWith("IMPRESO")) return false;
+            if (!s.ruta || s.ruta === "SIN PROG." || s.ruta === "FORZADO") return false;
+
+            let dia = (s.dia || "").toUpperCase();
+            let ruta = (s.ruta || "").toUpperCase();
+
+            if (filtroDia && !dia.includes(filtroDia)) return false;
+            if (filtroRuta && !ruta.includes(filtroRuta)) return false;
+
+            return true;
+        });
+
+        if (escaneosFiltrados.length === 0) {
+            alert("No hay datos de validación de ruta para imprimir con los filtros actuales.");
+            return;
+        }
+
+        let reporte = {};
+        escaneosFiltrados.forEach(s => {
+            let d = s.dia || "SIN DIA";
+            let r = s.ruta || "SIN RUTA";
+            let z = s.zona || "SIN ZONA"; 
+            let u = s.ubic || "SIN UBIC";
+
+            if (!reporte[d]) reporte[d] = {};
+            if (!reporte[d][r]) reporte[d][r] = {};
+            if (!reporte[d][r][z]) reporte[d][r][z] = { ubic: u, foliosInfo: [], bultos: 0, count: 0 };
+
+            let existe = reporte[d][r][z].foliosInfo.find(f => f.guia === s.guia);
+            if (!existe) {
+                let catText = s.cat && s.cat !== "-" ? s.cat : "S/C";
+                reporte[d][r][z].foliosInfo.push({ guia: s.guia, cat: catText });
+                reporte[d][r][z].bultos += (parseInt(s.bul) || 1);
+                reporte[d][r][z].count++;
+            }
+        });
+
+        let thDetalle = conDetalle ? `<th style="width: 50%;">DETALLE DE FOLIOS Y CATEGORÍAS</th>` : '';
+        let tituloReporte = conDetalle ? "Reporte Detallado de Validación" : "Reporte Resumido de Validación";
+
+        let htmlImpresion = `
+            <html>
+            <head>
+                <title>${tituloReporte}</title>
+                <style>
+                    body { font-family: 'Arial', sans-serif; padding: 20px; font-size: 12px; }
+                    h2 { text-align: center; color: #333; text-transform: uppercase; margin-bottom: 5px; }
+                    .info-filtros { text-align: center; margin-bottom: 20px; font-weight: bold; font-size: 13px; color: #555; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+                    th { background-color: #f3f4f6; padding: 8px; border: 1px solid #ccc; text-align: left; font-size: 11px; text-transform: uppercase; }
+                    td { padding: 8px; border: 1px solid #ccc; vertical-align: top; }
+                    .folio-item { display: inline-block; background: #f8fafc; border: 1px solid #e2e8f0; padding: 4px 6px; margin: 3px; border-radius: 4px; font-family: monospace; font-size: 11px; }
+                    .folio-cat { font-weight: bold; color: #4f46e5; font-size: 9px; }
+                    .btn-print { display: block; width: 100%; max-width: 250px; margin: 0 auto 20px auto; padding: 12px; background: #2196F3; color: white; text-align: center; font-weight: bold; cursor: pointer; border: none; border-radius: 6px; font-size: 14px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+                    .btn-print:hover { background: #1976D2; }
+                    @media print { .no-print { display: none !important; } }
+                </style>
+            </head>
+            <body>
+                <button class="no-print btn-print" onclick="window.print()">🖨️ IMPRIMIR ${conDetalle ? 'DETALLADO' : 'RESUMIDO'}</button>
+                <h2>${tituloReporte}</h2>
+                <div class="info-filtros">
+                    Filtro Día: ${filtroDia || "TODOS"} | Filtro Ruta: ${filtroRuta || "TODAS"} <br>
+                    Total General Folios: ${escaneosFiltrados.length}
+                </div>
+        `;
+
+        for (let dia in reporte) {
+            for (let ruta in reporte[dia]) {
+                
+                let totalFoliosRuta = 0;
+                let totalBultosRuta = 0;
+                for (let zona in reporte[dia][ruta]) {
+                    totalFoliosRuta += reporte[dia][ruta][zona].count;
+                    totalBultosRuta += reporte[dia][ruta][zona].bultos;
+                }
+
+                htmlImpresion += `
+                    <div style="background: #e0e7ff; padding: 8px; border: 1px solid #ccc; border-bottom: none; display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="margin: 0;">📅 DÍA: ${dia} | 🚚 RUTA: ${ruta}</h3>
+                        <div style="font-size: 14px; font-weight: 900; color: #1e293b; background: white; padding: 4px 8px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                            <span style="color: #0ea5e9;">📋 Total Folios: ${totalFoliosRuta}</span> &nbsp;|&nbsp; 
+                            <span style="color: #10b981;">📦 Total Bultos: ${totalBultosRuta}</span>
+                        </div>
+                    </div>
+                    <table style="margin-top: 0;">
+                        <thead>
+                            <tr>
+                                <th style="width: 20%;">ZONA</th>
+                                <th style="width: 20%;">UBICACIÓN (REF)</th>
+                                <th style="width: 10%; text-align:center;">FOLIOS</th>
+                                <th style="width: 10%; text-align:center;">BULTOS</th>
+                                ${thDetalle}
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+
+                for (let zona in reporte[dia][ruta]) {
+                    let datos = reporte[dia][ruta][zona];
+                    
+                    let tdDetalle = '';
+                    if (conDetalle) {
+                        let foliosHtml = datos.foliosInfo.map(f => 
+                            `<span class="folio-item">${f.guia} <span class="folio-cat">(${f.cat})</span></span>`
+                        ).join(" ");
+                        tdDetalle = `<td>${foliosHtml}</td>`;
+                    }
+
+                    htmlImpresion += `
+                        <tr>
+                            <td style="font-weight: bold; color: #d97706; font-size: 13px;">${zona}</td>
+                            <td style="font-weight: bold; color: #666;">${datos.ubic}</td>
+                            <td style="text-align:center; font-weight: bold; font-size: 14px;">${datos.count}</td>
+                            <td style="text-align:center; font-weight: bold; color: green; font-size: 14px;">${datos.bultos}</td>
+                            ${tdDetalle}
+                        </tr>
+                    `;
+                }
+                htmlImpresion += `</tbody></table>`;
+            }
+        }
+
+        htmlImpresion += `
+                </scr` + `ipt>
+                <scr` + `ipt>
+                    window.onload = function() { window.print(); }
+                </scr` + `ipt>
+            </body>
+            </html>
+        `;
+
+        let ventanaPrint = window.open('', '_blank');
+        ventanaPrint.document.write(htmlImpresion);
+        ventanaPrint.document.close();
+    }
+</script>
+</body>
+</html>
